@@ -1,0 +1,3 @@
+[config]
+grid_x_size = 29
+grid_y_size = 29
