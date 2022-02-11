@@ -1,7 +1,31 @@
 import configparser
 import torch
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cpu')
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+def matrix_from_file(path, size_x, size_y):
+    """Reads a grid file that is structured as idx1,idx2,weight and creates a matrix representation of it.
+    It is used to read ses variables per grid, od matrices, etc.
+
+    Args:
+        path (string): the path of the file.
+        size_x (int): nr of rows in the matrix.
+        size_y (int): nr of columns in the matrix.
+
+    Returns:
+        torch.Tensor: the matrix representation of the file.
+    """
+    mx = torch.zeros((size_x, size_y)).to(device)
+    with open(path, 'r') as f:
+        for line in f:
+            idx1, idx2, weight = line.rstrip().split(',')
+            idx1 = int(idx1)
+            idx2 = int(idx2)
+            weight = float(weight)
+
+            mx[idx1][idx2] = weight
+    return mx
 
 class Environment(object):
     """The City Grid environment the agent learns from."""
@@ -24,15 +48,7 @@ class Environment(object):
         self.grid_y_size = config.getint('config', 'grid_y_size')
         self.grid_size = self.grid_x_size * self.grid_y_size
         
-        # Build a grid_x_size * grid_y_size OD matrix from the od.txt file
-        self.od_mx = torch.zeros((self.grid_size, self.grid_size)).to(device)
-        with open(path / 'od.txt', 'r') as f:
-            for line in f:
-                index1, index2, weight = line.rstrip().split(',')
-                index1 = int(index1)
-                index2 = int(index2)
-                weight = float(weight)
-
-                self.od_mx[index1][index2] = weight
-
-
+        # Build a grid_size x grid_size OD matrix.
+        self.od_mx = matrix_from_file(path / 'od.txt', self.grid_size, self.grid_size)
+        self.price_mx = matrix_from_file(path / 'average_house_price_gid.txt', self.grid_x_size, self.grid_y_size)
+        
