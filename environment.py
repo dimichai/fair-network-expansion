@@ -2,9 +2,9 @@ import configparser
 import torch
 import json
 import numpy as np
+import constants
 
-device = torch.device('cpu')
-# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = constants.device
 
 def matrix_from_file(path, size_x, size_y):
     """Reads a grid file that is structured as idx1,idx2,weight and creates a matrix representation of it.
