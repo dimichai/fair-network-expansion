@@ -44,6 +44,15 @@ class Environment(object):
         v_idx = grid_idx[:, 0] * self.grid_x_size + grid_idx[:, 1]
         return v_idx
 
+    def process_lines(self, lines):
+        processed_lines = []
+        for l in lines:
+            l = torch.Tensor(l).to(device)
+            # Convert grid indices (x,y) to vector indices (x^)
+            l = self.grid_to_vector(l)
+            processed_lines.append(l)
+        return processed_lines
+
     def __init__(self, path):
         """Initialise city environment.
 
@@ -57,10 +66,6 @@ class Environment(object):
         config.read(path / 'config.txt')
         assert 'config' in config
 
-        # todo delete this line
-        self.config_obj = config
-        #
-
         # size of the grid
         self.grid_x_size = config.getint('config', 'grid_x_size')
         self.grid_y_size = config.getint('config', 'grid_y_size')
@@ -72,12 +77,12 @@ class Environment(object):
 
         # Read existing metro lines of the environment.
         # json is used to load lists from ConfigParser as there is no built in way to do it.
-        existing_lines = json.loads(config.get('config', 'existing_lines'))
-        self.existing_lines = []
-        for line in existing_lines:
-            line = torch.Tensor(line).to(device)
-            # Convert grid indices (x,y) to vector indices (x^)
-            line = self.grid_to_vector(line)
-            self.existing_lines.append(line)
-            
+        existing_lines = self.process_lines(json.loads(config.get('config', 'existing_lines')))
+        # Full lines contains the lines + the squares between consecutive stations e.g. if line is (0,0)-(0,2)-(2,2) then full line also includes (0,1), (1,2).
+        # These are important for when calculating connections between generated & lines and existing lines.
+        existing_lines_full = self.process_lines(json.loads(config.get('config', 'existing_lines_full')))
+
+        # Create line tensors
+        self.existing_lines = [l.view(len(l), 1) for l in existing_lines]
+        self.existing_lines_full = [l.view(len(l), 1) for l in existing_lines_full]
         
