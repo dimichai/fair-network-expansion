@@ -44,6 +44,21 @@ class Environment(object):
         v_idx = grid_idx[:, 0] * self.grid_x_size + grid_idx[:, 1]
         return v_idx
 
+    def vector_to_grid(self, vector_idx):
+        """Converts vector index (x^2) to grid indices (x, y)
+
+        Args:
+            vector_idx (torch.Tensor): the vector index to be converted to grid indices: x
+
+        Returns:
+            _type_: _description_
+        """
+
+        grid_x = (vector_idx // self.grid_x_size).view(1)
+        grid_y = (vector_idx % self.grid_y_size).view(1)
+
+        return torch.cat((grid_x, grid_y), dim=0).view(1, 2)
+
     def process_lines(self, lines):
         processed_lines = []
         for l in lines:
@@ -52,6 +67,22 @@ class Environment(object):
             l = self.grid_to_vector(l)
             processed_lines.append(l)
         return processed_lines
+
+    def update_mask(self, vector_index_allow):
+        """Updates the selection mask. Only allowed next locations are assigned 1, all others 0.
+        This prevents re-selecting locations.
+
+        Args:
+            vector_index_allow (torch.Tensor): Allowed locations(indices) to be selected.
+
+        Returns:
+            torch.Tensor: the updated mask of allowed next locations.
+        """
+        mask_initial = torch.zeros(1, self.grid_num, device=device).long() # 1 : bacth_size
+        mask = mask_initial.index_fill_(1, vector_index_allow, 1).float()  # the first 1: dim , the second 1: value
+
+        return mask
+
 
     def __init__(self, path):
         """Initialise city environment.
@@ -70,7 +101,11 @@ class Environment(object):
         self.grid_x_size = config.getint('config', 'grid_x_size')
         self.grid_y_size = config.getint('config', 'grid_y_size')
         self.grid_size = self.grid_x_size * self.grid_y_size
-        
+
+        # size of the model's static and dynamic parts
+        # self.static_size = config.getint('config', 'static_size')
+        # self.dynamic_size = config.getint('config', 'dynamic_size')
+
         # Build the OD and the SES matrices.
         self.od_mx = matrix_from_file(path / 'od.txt', self.grid_size, self.grid_size)
         self.price_mx = matrix_from_file(path / 'average_house_price_gid.txt', self.grid_x_size, self.grid_y_size)
