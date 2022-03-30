@@ -130,8 +130,8 @@ class DRL4Metro(nn.Module):
         Defines the dropout rate for the decoder
     """
 
-    def __init__(self, static_size, dynamic_size, hidden_size, update_fn = None, mask_fn = None, v_to_g_fn = None,
-                 vector_allow_fn = None, num_layers=1, dropout=0.):
+    def __init__(self, static_size, dynamic_size, hidden_size, num_layers=1, dropout=0., update_fn = None, mask_fn = None, v_to_g_fn = None,
+                 vector_allow_fn = None):
         super(DRL4Metro, self).__init__()
 
         if dynamic_size < 1:
