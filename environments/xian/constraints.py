@@ -56,16 +56,18 @@ inc_all = torch.tensor([[-2,-2],[-2,-1],[-2,0],[-2,1],[-2,2],[-1,-2],[-1,-1],[-1
                          [1,-2],[1,-1],[1,0],[1,1],[1,2],[2,-2],[2,-1],[2,0],[2,1],[2,2]]).to(device)
 
 def allowed_next_vector_indices(selected_idx, selected_g_idx, last_grid, direction_vector):
-    """_summary_
+    """Applies different routing constraints and returns a vector of available indices to be selected next by the agent.
+    The selection is based on the last selected index and the direction of the agent.
 
     Args:
-        selected_idx (_type_): _description_
-        selected_g_idx (_type_): _description_
-        last_grid (_type_): _description_
+        selected_idx (numpy.int64): the current selected index.
+        selected_g_idx (torch.Tensor): the current selected index in grid coordinates.
+        last_grid (torch.Tensor): the previously selected index in grid coordinates.
         direction_vector (torch.Tensor): the current direction vector - stores all directions the agent went in the past.
 
     Returns:
-        _type_: _description_
+        torch.Tensor: direction_vector: updated direction vector
+        torch.Tensor: allowed_v: all available vector indices to be selected next.
     """
 
     # Determine the current direction of the agent, by taking it's relation to the grid versus the previous location. 
