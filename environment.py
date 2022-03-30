@@ -120,4 +120,11 @@ class Environment(object):
         # Create line tensors
         self.existing_lines = [l.view(len(l), 1) for l in existing_lines]
         self.existing_lines_full = [l.view(len(l), 1) for l in existing_lines_full]
-        
+
+        # Create the static representation of the grid coordinates - to be used by the actor.
+        xs, ys = [], []
+        for i in range(self.grid_x_size):
+            for j in range(self.grid_y_size):
+                xs.append(i)
+                ys.append(j)
+        self.static = torch.Tensor([[xs, ys]]).to(device) # should be float32
