@@ -15,6 +15,8 @@ if __name__ == "__main__":
     parser.add_argument('--dynamic_size', default=1, type=int)
     parser.add_argument('--num_layers', default=1, type=int)
     parser.add_argument('--dropout', default=0.1, type=float)
+    parser.add_argument('--checkpoint', default=None)
+    parser.add_argument('--test', action='store_true', default=False)
 
     args = parser.parse_args()
 
