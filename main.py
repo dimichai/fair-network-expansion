@@ -1,8 +1,11 @@
 import argparse
+
+import torch
 from actor import DRL4Metro
 from environment import Environment
 from trainer import Trainer
 from pathlib import Path
+from environments.xian.constraints import allowed_next_vector_indices
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fair Network Expansion with Reinforcement Learning")
@@ -19,6 +22,14 @@ if __name__ == "__main__":
     xian = Environment(Path('./environments/xian'))
 
     trainer_xian = Trainer(xian, args)
+
+    # dir_v, allowed_v = allowed_next_vector_indices(242, torch.Tensor([[8, 10]]).long(), torch.Tensor([[8, 11]]).long(), torch.Tensor([[0, 0, 0, 0, 1, 0, 1, 0]]).long())
+    # print(dir_v, allowed_v)
+    # # correct is tensor([[0, 0, 0, 0, 1, 0, 1, 0]]), tensor([240, 241, 269, 270, 271, 298, 299, 300])
+
+    # dir_v, allowed_v = allowed_next_vector_indices(310, torch.Tensor([[10, 20]]).long(), torch.Tensor([[8, 20]]).long(), torch.Tensor([[0, 0, 0, 0, 0, 0, 0, 0]]).long())
+    # print(dir_v, allowed_v)
+    # # correct is tensor([[0, 0, 0, 0, 1, 0, 0, 0]]), tensor([308, 309, 311, 312, 337, 338, 339, 340, 341, 366, 367, 368, 369, 370])
 
     print("made it!")
 
