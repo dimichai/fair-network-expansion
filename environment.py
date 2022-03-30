@@ -51,7 +51,7 @@ class Environment(object):
             vector_idx (torch.Tensor): the vector index to be converted to grid indices: x
 
         Returns:
-            _type_: _description_
+            torch.Tensor: covnerted grid index.
         """
 
         grid_x = (vector_idx // self.grid_x_size).view(1)
