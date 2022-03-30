@@ -1,13 +1,36 @@
 # Xi'an environment movement constraints.
 # TODO: remove from here and integrate into Environment.py
+from pathlib import Path
+import numpy as np
 import torch
 import constants
+from environment import Environment
 
 device = constants.device
 
 # grid limits
 grid_x_size = 29
 grid_y_size = 29
+xian = Environment(Path('./environments/xian'))
+
+# create an adjacency matrix of the grid squares based on all the existing lines.
+# adjacency is defined as being +1 or +2 steps next to the station in the existing lines.
+# o1 -- o2 -- o3 -- o4 -- o5 -> adjacent to o3 are o1, o2, o4, o5
+existing_lines_adj_mx = {}
+for i, line in enumerate(xian.existing_lines_full):
+    for j, station in enumerate(line):
+        if station not in existing_lines_adj_mx:
+            existing_lines_adj_mx[station] = []
+        
+        if (j - 2) >= 0:
+            existing_lines_adj_mx[station].append(line[j - 2])
+        if (j - 1) >= 0:
+            existing_lines_adj_mx[station].append(line[j - 1])
+        if (j + 1) <= (len(line) - 1):
+            existing_lines_adj_mx[station].append(line[j + 1])
+        if (j + 2) <= (len(line) - 1):
+            existing_lines_adj_mx[station].append(line[j + 2])
+
 
 # define direction tensors
 dir_upright = torch.tensor([-1, 1]).view(1, 2).to(device) 
@@ -32,7 +55,7 @@ inc_left = torch.tensor([[-2,-2],[-2,-1],[-2,0],[-1,-2],[-1,-1],[-1,0],[0,-2],[0
 inc_all = torch.tensor([[-2,-2],[-2,-1],[-2,0],[-2,1],[-2,2],[-1,-2],[-1,-1],[-1,0],[-1,1],[-1,2],[0,-2],[0,-1],[0,1],[0,2],
                          [1,-2],[1,-1],[1,0],[1,1],[1,2],[2,-2],[2,-1],[2,0],[2,1],[2,2]]).to(device)
 
-def vector_allow(self, selected_idx, selected_g_idx, last_grid, direction_vector):
+def allowed_next_vector_indices(selected_idx, selected_g_idx, last_grid, direction_vector):
     """_summary_
 
     Args:
@@ -90,38 +113,42 @@ def vector_allow(self, selected_idx, selected_g_idx, last_grid, direction_vector
 
     # Determine the grid indices allowed to be selected next, based on the calculated next allowed direction.
     if allowed_dir[0, 0] == 1:
-        allowed_grids = selected_g_idx + inc_up
+        allowed_g = selected_g_idx + inc_up
     elif allowed_dir[0, 1] == 1:
-        allowed_grids = selected_g_idx + inc_upright
+        allowed_g = selected_g_idx + inc_upright
     elif allowed_dir[0, 2] == 1:
-        allowed_grids = selected_g_idx + inc_right
+        allowed_g = selected_g_idx + inc_right
     elif allowed_dir[0, 3] == 1:
-        allowed_grids = selected_g_idx + inc_downright
+        allowed_g = selected_g_idx + inc_downright
     elif allowed_dir[0, 4] == 1:
-        allowed_grids = selected_g_idx + inc_down
+        allowed_g = selected_g_idx + inc_down
     elif allowed_dir[0, 5] == 1:
-        allowed_grids = selected_g_idx + inc_downleft
+        allowed_g = selected_g_idx + inc_downleft
     elif allowed_dir[0, 6] == 1:
-        allowed_grids = selected_g_idx + inc_left
+        allowed_g = selected_g_idx + inc_left
     elif allowed_dir[0, 7] == 1:
-        allowed_grids = selected_g_idx + inc_upleft
+        allowed_g = selected_g_idx + inc_upleft
     else:
-        allowed_grids = selected_g_idx + inc_all
+        allowed_g = selected_g_idx + inc_all
 
     # only keep the squares that are within the grid limits.
-    allowed_grids = allowed_grids[(allowed_grids[:, 0] < grid_x_size) & (allowed_grids[:, 1] < grid_y_size)]
-    allowed_grids = allowed_grids[(allowed_grids[:, 0] >= 0) & (allowed_grids[:, 1] >= 0)]
+    allowed_g = allowed_g[(allowed_g[:, 0] < grid_x_size) & (allowed_g[:, 1] < grid_y_size)]
+    allowed_g = allowed_g[(allowed_g[:, 0] >= 0) & (allowed_g[:, 1] >= 0)]
     
-    if allowed_grids.size()[0]:
-        vector_index = self.g_to_v(allowed_grids)
-        vector_index_allow = self.exi_line_control(selected_idx, vector_index)
+    if allowed_g.size()[0]:
+        allowed_v = xian.grid_to_vector(allowed_g)
 
-        # vector_index_allow: tensor([], device='cuda:0', dtype=torch.int64)
-        if not vector_index_allow.size()[0]:
-            vector_index_allow = self.null_tensor
+        # TODO control this with a flag as we might not always need to apply this constraint.
+        # Do not allow the agent to select an adjacent station of a station in an existing line.
+        # Essentially to stop re-creating the already existing line.
+        adjacent_stations = existing_lines_adj_mx.get(selected_idx)
+        if adjacent_stations:
+            allowed_v = allowed_v[~np.isin(allowed_v, adjacent_stations)]
 
-    else:  # grids_allow =  tensor([], device='cuda:0', dtype=torch.int64)
+        if not allowed_v.size()[0]:
+            allowed_v = torch.Tensor([]).long().to(device)
 
-        vector_index_allow = self.null_tensor
+    else:
+        allowed_v = torch.Tensor([]).long().to(device)
 
-    return direction_vector, vector_index_allow
+    return direction_vector, allowed_v
