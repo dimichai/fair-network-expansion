@@ -158,7 +158,7 @@ class DRL4Metro(nn.Module):
         self.x0 = torch.zeros((1, static_size, 1), requires_grad=True, device=device)
 
 
-    def forward(self, static, dynamic, station_num_lim, budget =None, initial_direct = None,line_unit_price = None, station_price = None,
+    def forward(self, static, dynamic, station_num_lim, budget=None, initial_direct = None,line_unit_price = None, station_price = None,
                 decoder_input=None, last_hh=None):
         # initial_direct: direction 
         # line_unit_price: example:  1.0

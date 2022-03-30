@@ -1,6 +1,10 @@
 from os import environ
 from actor import DRL4Metro
+from critic import StateCritic
 from environments.xian.constraints import allowed_next_vector_indices
+import constants
+
+device = constants.device
 
 def update_dynamic(dynamic, current_selected_index):
     """Updates the dynamic representation of the actor to a sparse matrix with all so-far selected stations.
@@ -25,4 +29,14 @@ class Trainer(object):
         
         # Prepare the models
         # TODO: replace allowed_next_vector_indices with environment.constraints... whatever
-        self.actor = DRL4Metro(args.static_size, args.dynamic_size, args.hidden_size, args.num_layers, args.dropout, update_dynamic, environment.update_mask, v_to_g_fn=environment.vector_to_grid, vector_allow_fn=allowed_next_vector_indices)
+        self.actor = DRL4Metro(args.static_size, 
+                            args.dynamic_size, 
+                            args.hidden_size, 
+                            args.num_layers, 
+                            args.dropout, 
+                            update_dynamic, 
+                            environment.update_mask, 
+                            v_to_g_fn=environment.vector_to_grid, 
+                            vector_allow_fn=allowed_next_vector_indices).to(device)
+
+        self.critic = StateCritic(args.static_size, args.dynamic_size, args.hidden_size).to(device)
