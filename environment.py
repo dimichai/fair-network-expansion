@@ -106,9 +106,12 @@ class Environment(object):
         # self.static_size = config.getint('config', 'static_size')
         # self.dynamic_size = config.getint('config', 'dynamic_size')
 
-        # Build the OD and the SES matrices.
+        # Build the normalized OD and SES matrices.
         self.od_mx = matrix_from_file(path / 'od.txt', self.grid_size, self.grid_size)
+        # TODO: consider doing the normalization in matrix_from_file with an argument.
+        self.od_mx = self.od_mx / torch.max(self.od_mx)
         self.price_mx = matrix_from_file(path / 'average_house_price_gid.txt', self.grid_x_size, self.grid_y_size)
+        self.price_mx = self.price_mx / torch.max(self.price_mx)
 
         # Read existing metro lines of the environment.
         # json is used to load lists from ConfigParser as there is no built in way to do it.
