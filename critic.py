@@ -3,9 +3,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import sys
-import constants
-sys.path.append(constants.WORKING_DIR)
 import csv
 from actor import Encoder
 
