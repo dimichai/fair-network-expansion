@@ -9,6 +9,7 @@ from actor import DRL4Metro
 from critic import StateCritic
 from environments.xian.constraints import allowed_next_vector_indices
 import constants
+from reward import od_utility
 
 device = constants.device
 
@@ -60,8 +61,7 @@ def train(actor, critic, environment, args):
                                     decoder_input=None, last_hh=None)
 
             # TODO: add different conditions for calculating the reward function.
-            # reward = metro_vrp.reward_fn1(tour_idx_cpu, grid_num, agent_grid_list, line_full_tensor, line_station_list,
-                                    #   exist_line_num, od_matirx, args.grid_x_max, args.dis_lim)
+            reward = od_utility(tour_idx, environment)
 
 
 class Trainer(object):

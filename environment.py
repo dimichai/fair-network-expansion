@@ -60,6 +60,14 @@ class Environment(object):
         return torch.cat((grid_x, grid_y), dim=0).view(1, 2)
 
     def process_lines(self, lines):
+        """Creates a list of tensors for each line, from given grid indices. Used to create line/segment representations of metro lines.
+
+        Args:
+            lines (list): list of list of stations (grid indices).
+
+        Returns:
+            list: list of tensors, one for each line. Each tensor is a series of vector indices.
+        """
         processed_lines = []
         for l in lines:
             l = torch.Tensor(l).long().to(device)
@@ -82,6 +90,31 @@ class Environment(object):
         mask = mask_initial.index_fill_(1, vector_index_allow, 1).float()  # the first 1: dim , the second 1: value
 
         return mask
+
+    def satisfied_od_flows(self, tour_idx):
+        # Satisfied OD pairs from the new line, only considering the new line od demand.
+        sat_od_pairs = torch.combinations(tour_idx.flatten(), 2)
+
+        # Satisfied OD pairs from the new line, by considering connections to existing lines.
+        for line in self.existing_lines:
+            intersection_indices = ((tour_idx - line) == 0).nonzero()
+            if intersection_indices.size()[0] != 0:
+                line_mask = torch.ones(line.numel(), dtype=torch.bool)
+                line_mask[intersection_indices[:, 0]] = False
+                line_connections = line[line_mask]
+                
+                tour_mask = torch.ones(tour_idx.numel(), dtype=torch.bool)
+                tour_mask[intersection_indices[:, 1]] = False
+                # Note this won't work with multi-dimensional tour_idx
+                tour_connections = tour_idx[0, tour_mask]
+                
+                # all_connections = torch.cat((line_connections.flatten(), tour_connections))
+                # conn_sat_od_pairs = torch.combinations(all_connections, 2)
+                conn_sat_od_pairs = torch.cartesian_prod(tour_connections, line_connections.flatten())
+                
+                sat_od_pairs = torch.cat((sat_od_pairs, conn_sat_od_pairs))
+        
+        print('done')
 
 
     def __init__(self, path):
