@@ -78,7 +78,7 @@ class Environment(object):
         Returns:
             torch.Tensor: the updated mask of allowed next locations.
         """
-        mask_initial = torch.zeros(1, self.grid_num, device=device).long() # 1 : bacth_size
+        mask_initial = torch.zeros(1, self.grid_size, device=device).long() # 1 : bacth_size
         mask = mask_initial.index_fill_(1, vector_index_allow, 1).float()  # the first 1: dim , the second 1: value
 
         return mask

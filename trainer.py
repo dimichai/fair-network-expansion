@@ -2,6 +2,7 @@ import datetime
 from os import environ
 import os
 from pathlib import Path
+import time
 import torch
 import torch.optim as optim
 from actor import DRL4Metro
@@ -27,22 +28,40 @@ def update_dynamic(dynamic, current_selected_index):
 
     return dynamic
 
-def train(actor, critic, actor_lr, critic_lr, result_path):
+def train(actor, critic, environment, args):
     # now = '%s' % datetime.datetime.now().time().replace(':', '_')
     now = datetime.datetime.today().strftime('%Y%m%d_%H_%M_%S.%f')
-    save_dir = result_path / now
+    save_dir = args.result_path / now
 
     checkpoint_dir = save_dir / 'checkpoints'
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
-    actor_optim = optim.Adam(actor.parameters(), lr=actor_lr)
-    critic_optim = optim.Adam(critic.parameters(), lr=critic_lr)
+    actor_optim = optim.Adam(actor.parameters(), lr=args.actor_lr)
+    critic_optim = optim.Adam(critic.parameters(), lr=args.critic_lr)
 
     average_reward_list, actor_loss_list, critic_loss_list, average_od_list, average_Ac_list = [], [], [], [], []
     # best_params = None
     best_reward = 0
 
+    static = environment.static
+    dynamic = torch.zeros((1, args.dynamic_size, environment.grid_size)).float().to(device) # size with batch
+
+    for epoch in range(args.epoch_max):
+        actor.train()
+        critic.train()
+
+        epoch_start = time.time()
+        od_list, social_equity_list = [], []
+
+        for example_id in range(args.train_size):  # this loop accumulates a batch
+            tour_idx, tour_logp = actor(static, dynamic, args.station_num_lim, budget=args.budget,
+                                    line_unit_price=args.line_unit_price, station_price=args.station_price,
+                                    decoder_input=None, last_hh=None)
+
+            # TODO: add different conditions for calculating the reward function.
+            # reward = metro_vrp.reward_fn1(tour_idx_cpu, grid_num, agent_grid_list, line_full_tensor, line_station_list,
+                                    #   exist_line_num, od_matirx, args.grid_x_max, args.dis_lim)
 
 
 class Trainer(object):
@@ -62,7 +81,7 @@ class Trainer(object):
                             v_to_g_fn=environment.vector_to_grid, 
                             vector_allow_fn=allowed_next_vector_indices).to(device)
 
-        critic = StateCritic(args.static_size, args.dynamic_size, args.hidden_size).to(device)
+        critic = StateCritic(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size).to(device)
 
         # TODO: maybe make it so that if there is a checkpoint, training log continues from that epoch and not from the start
         if args.checkpoint:
@@ -70,4 +89,4 @@ class Trainer(object):
             critic.load_state_dict(torch.load(args.checkpoint / 'critic.pt', device))
         
         if not args.test:
-            train(actor, critic)
+            train(actor, critic, environment, args)

@@ -282,7 +282,7 @@ class DRL4Metro(nn.Module):
                                           decoder_hidden, last_hh,last_cc)
 
             #probs = F.softmax(probs + mask.log(), dim=1)      # original program
-            print(f'The mask sum is: {mask.log().sum()}')
+            # print(f'The mask sum is: {mask.log().sum()}')
             probs = F.softmax(probs + mask*10000, dim=1)
             #probs: size (batch,sequence_size) 
 

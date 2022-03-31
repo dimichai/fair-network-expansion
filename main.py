@@ -17,6 +17,15 @@ if __name__ == "__main__":
     parser.add_argument('--dropout', default=0.1, type=float)
     parser.add_argument('--checkpoint', default=None)
     parser.add_argument('--test', action='store_true', default=False)
+    parser.add_argument('--epoch_max', default=3500, type=int)
+    parser.add_argument('--train_size',default=128, type=int) # like a batch_size
+    parser.add_argument('--line_unit_price', default=1.0, type=float)
+    parser.add_argument('--station_price', default=5.0, type=float)
+    parser.add_argument('--result_path', default=Path('./result'), type=str)
+    parser.add_argument('--actor_lr', default=10e-4, type=float)
+    parser.add_argument('--critic_lr', default=10e-4, type=float)
+    parser.add_argument('--station_num_lim', default=45, type=int)  # limit the number of stations in a line
+    parser.add_argument('--budget', default=210, type=int)
 
     args = parser.parse_args()
 
