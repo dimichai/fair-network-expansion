@@ -62,7 +62,7 @@ class Environment(object):
     def process_lines(self, lines):
         processed_lines = []
         for l in lines:
-            l = torch.Tensor(l).to(device)
+            l = torch.Tensor(l).long().to(device)
             # Convert grid indices (x,y) to vector indices (x^)
             l = self.grid_to_vector(l)
             processed_lines.append(l)
@@ -123,6 +123,20 @@ class Environment(object):
         # Create line tensors
         self.existing_lines = [l.view(len(l), 1) for l in existing_lines]
         self.existing_lines_full = [l.view(len(l), 1) for l in existing_lines_full]
+
+        # Apply excluded OD segments to the od_mx. E.g. segments very close to the current lines that we want to set OD to 0.
+        if config.has_option('config', 'excluded_od_segments'):
+            exclude_segments = self.process_lines(json.loads(config.get('config', 'excluded_od_segments')))
+            exclude_pairs = torch.Tensor([]).long().to(device)
+            for s in exclude_segments:
+                # Create two-way combinations of each segment.
+                # e.g. segment: 1-2-3-4, pairs: 1-2, 2-1, 1-3, 3-1, 1-4, 4-1, ... etc
+                pair1 = torch.combinations(s, 2)
+                pair2 = torch.combinations(s.flip(0), 2)
+
+                exclude_pairs = torch.cat((exclude_pairs, pair1, pair2))
+            
+            self.od_mx[exclude_pairs[:, 0], exclude_pairs[:, 1]] = 0
 
         # Create the static representation of the grid coordinates - to be used by the actor.
         xs, ys = [], []
