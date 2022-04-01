@@ -47,7 +47,7 @@ def train(actor, critic, environment: Environment, args):
     best_reward = 0
 
     static = environment.static
-    dynamic = torch.zeros((1, args.dynamic_size, environment.grid_size)).float().to(device) # size with batch
+    dynamic = torch.zeros((1, args.dynamic_size, environment.grid_size), device=device).float() # size with batch
 
     for epoch in range(args.epoch_max):
         actor.train()
@@ -154,7 +154,7 @@ class Trainer(object):
                             args.dropout, 
                             update_dynamic, 
                             environment.update_mask, 
-                            v_to_g_fn=environment.vector_to_grid, 
+                            v_to_g_fn=environment.vector_to_grid,
                             vector_allow_fn=allowed_next_vector_indices).to(device)
 
         critic = StateCritic(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size).to(device)

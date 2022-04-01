@@ -53,17 +53,15 @@ class Pointer(nn.Module):
         self.hidden_size = hidden_size
 
         # Used to compute a representation of the current decoder output
-        self.lstm = torch.nn.LSTMCell(input_size=hidden_size, hidden_size = hidden_size)
-        self.lstm = self.lstm.to(device)
-        self.encoder_attn = Attention(hidden_size)
-        self.encoder_attn = self.encoder_attn.to(device)
+        self.lstm = torch.nn.LSTMCell(input_size=hidden_size, hidden_size = hidden_size, device=device)
+        self.encoder_attn = Attention(hidden_size, device=device)
 
-        self.project_d = nn.Conv1d(hidden_size, hidden_size, kernel_size=1).to(device) #conv1d_1
+        self.project_d = nn.Conv1d(hidden_size, hidden_size, kernel_size=1, device=device) #conv1d_1
         
 
-        self.project_query = nn.Linear(hidden_size, hidden_size).to(device)
+        self.project_query = nn.Linear(hidden_size, hidden_size, device=device)
 
-        self.project_ref = nn.Conv1d(hidden_size, hidden_size, kernel_size=1).to(device) #conv1d_4
+        self.project_ref = nn.Conv1d(hidden_size, hidden_size, kernel_size=1, device=device)
 
         self.drop_cc = nn.Dropout(p=dropout)
         self.drop_hh = nn.Dropout(p=dropout)
@@ -144,7 +142,7 @@ class MetroActor(nn.Module):
 
 
         batch_size, input_size, sequence_size = static.size()
-        self.direction_vector = torch.zeros((1, 8)).long().to(device)
+        self.direction_vector = torch.zeros((1, 8), device=device).long()
         
         if initial_direct: # give the initial direction
             for i in initial_direct:

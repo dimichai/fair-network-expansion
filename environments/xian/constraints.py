@@ -33,27 +33,27 @@ for i, line in enumerate(xian.existing_lines_full):
 
 
 # define direction tensors
-dir_upright = torch.tensor([-1, 1]).view(1, 2).to(device) 
-dir_upleft = torch.tensor([-1, -1]).view(1, 2).to(device)  
-dir_downleft = torch.tensor([1, -1]).view(1, 2).to(device) 
-dir_downright = torch.tensor([1, 1]).view(1, 2).to(device)  
-dir_up = torch.tensor([-1, 0]).view(1, 2).to(device)  
-dir_right = torch.tensor([0, 1]).view(1, 2).to(device)  
-dir_down = torch.tensor([1, 0]).view(1, 2).to(device)  
-dir_left = torch.tensor([0, -1]).view(1, 2).to(device)
+dir_upright = torch.tensor([-1, 1], device=device).view(1, 2)
+dir_upleft = torch.tensor([-1, -1], device=device).view(1, 2)
+dir_downleft = torch.tensor([1, -1], device=device).view(1, 2)
+dir_downright = torch.tensor([1, 1], device=device).view(1, 2)
+dir_up = torch.tensor([-1, 0], device=device).view(1, 2)
+dir_right = torch.tensor([0, 1], device=device).view(1, 2)
+dir_down = torch.tensor([1, 0], device=device).view(1, 2)
+dir_left = torch.tensor([0, -1], device=device).view(1, 2)
 
 # define incremental steps to select the next available grids, based on direction.
 # with this setup the agent can select grids up to 2 places away.
-inc_upright = torch.tensor([[-2,0],[-2,1],[-2,2],[-1,0],[-1,1],[-1,2],[0,1],[0,2]]).to(device)
-inc_upleft = torch.tensor([[-2,-2],[-2,-1],[-2,0],[-1,-2],[-1,-1],[-1,0],[0,-2],[0,-1]]).to(device)
-inc_downleft = torch.tensor([[0,-2],[0,-1],[1,-2],[1,-1],[1,0],[2,-2],[2,-1],[2,0]]).to(device)
-inc_downright = torch.tensor([[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]]).to(device)
-inc_up = torch.tensor([[-2,-2],[-2,-1],[-2,0],[-2,1],[-2,2],[-1,-2],[-1,-1],[-1,0],[-1,1],[-1,2],[0,-2],[0,-1],[0,1],[0,2]]).to(device)
-inc_right = torch.tensor([[-2,0],[-2,1],[-2,2],[-1,0],[-1,1],[-1,2],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]]).to(device)
-inc_down = torch.tensor([[0,-2],[0,-1],[0,1],[0,2],[1,-2],[1,-1],[1,0],[1,1],[1,2],[2,-2],[2,-1],[2,0],[2,1],[2,2]]).to(device)
-inc_left = torch.tensor([[-2,-2],[-2,-1],[-2,0],[-1,-2],[-1,-1],[-1,0],[0,-2],[0,-1],[1,-2],[1,-1],[1,0],[2,-2],[2,-1],[2,0]]).to(device)
+inc_upright = torch.tensor([[-2,0],[-2,1],[-2,2],[-1,0],[-1,1],[-1,2],[0,1],[0,2]], device=device)
+inc_upleft = torch.tensor([[-2,-2],[-2,-1],[-2,0],[-1,-2],[-1,-1],[-1,0],[0,-2],[0,-1]], device=device)
+inc_downleft = torch.tensor([[0,-2],[0,-1],[1,-2],[1,-1],[1,0],[2,-2],[2,-1],[2,0]], device=device)
+inc_downright = torch.tensor([[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]], device=device)
+inc_up = torch.tensor([[-2,-2],[-2,-1],[-2,0],[-2,1],[-2,2],[-1,-2],[-1,-1],[-1,0],[-1,1],[-1,2],[0,-2],[0,-1],[0,1],[0,2]], device=device)
+inc_right = torch.tensor([[-2,0],[-2,1],[-2,2],[-1,0],[-1,1],[-1,2],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]], device=device)
+inc_down = torch.tensor([[0,-2],[0,-1],[0,1],[0,2],[1,-2],[1,-1],[1,0],[1,1],[1,2],[2,-2],[2,-1],[2,0],[2,1],[2,2]], device=device)
+inc_left = torch.tensor([[-2,-2],[-2,-1],[-2,0],[-1,-2],[-1,-1],[-1,0],[0,-2],[0,-1],[1,-2],[1,-1],[1,0],[2,-2],[2,-1],[2,0]], device=device)
 inc_all = torch.tensor([[-2,-2],[-2,-1],[-2,0],[-2,1],[-2,2],[-1,-2],[-1,-1],[-1,0],[-1,1],[-1,2],[0,-2],[0,-1],[0,1],[0,2],
-                         [1,-2],[1,-1],[1,0],[1,1],[1,2],[2,-2],[2,-1],[2,0],[2,1],[2,2]]).to(device)
+                         [1,-2],[1,-1],[1,0],[1,1],[1,2],[2,-2],[2,-1],[2,0],[2,1],[2,2]], device=device)
 
 def allowed_next_vector_indices(selected_idx, selected_g_idx, last_grid, direction_vector):
     """Applies different routing constraints and returns a vector of available indices to be selected next by the agent.
@@ -95,7 +95,7 @@ def allowed_next_vector_indices(selected_idx, selected_g_idx, last_grid, directi
 
     # Determine the next allowed direction, based on the last movements.
     # direction vector: [up, up-right, right, down-right, down, down-left, left, up-left]
-    allowed_dir = torch.zeros((1, 8)).long().to(device)
+    allowed_dir = torch.zeros((1, 8), device=device).long()
     if (direction_vector[0, 1] == 1) or (direction_vector[0, 0] == 1 and direction_vector[0, 2] == 1):
         allowed_dir[0, 1] = 1
     elif (direction_vector[0, 7] == 1) or (direction_vector[0,0] == 1 and direction_vector[0,6] == 1):
@@ -148,9 +148,9 @@ def allowed_next_vector_indices(selected_idx, selected_g_idx, last_grid, directi
             allowed_v = allowed_v[~np.isin(allowed_v, adjacent_stations)]
 
         if not allowed_v.size()[0]:
-            allowed_v = torch.Tensor([]).long().to(device)
+            allowed_v = torch.Tensor([], device=device).long()
 
     else:
-        allowed_v = torch.Tensor([]).long().to(device)
+        allowed_v = torch.Tensor([], device=device).long()
 
     return direction_vector, allowed_v

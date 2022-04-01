@@ -18,7 +18,7 @@ def matrix_from_file(path, size_x, size_y):
     Returns:
         torch.Tensor: the matrix representation of the file.
     """
-    mx = torch.zeros((size_x, size_y)).to(device)
+    mx = torch.zeros((size_x, size_y), device=device)
     with open(path, 'r') as f:
         for line in f:
             idx1, idx2, weight = line.rstrip().split(',')
@@ -70,7 +70,7 @@ class Environment(object):
         """
         processed_lines = []
         for l in lines:
-            l = torch.Tensor(l).long().to(device)
+            l = torch.Tensor(l, device=device).long()
             # Convert grid indices (x,y) to vector indices (x^)
             l = self.grid_to_vector(l)
             processed_lines.append(l)
@@ -130,7 +130,7 @@ class Environment(object):
                 sat_od_pairs = torch.cat((sat_od_pairs, conn_sat_od_pairs))
         
         # Calculate a mask over the OD matrix, based on the satisfied OD pairs.
-        od_mask = torch.zeros(self.grid_size, self.grid_size).byte().to(device)
+        od_mask = torch.zeros(self.grid_size, self.grid_size, device=device).byte()
         od_mask[sat_od_pairs[:, 0], sat_od_pairs[:, 1]] = 1
         
         return od_mask
@@ -178,7 +178,7 @@ class Environment(object):
         # Apply excluded OD segments to the od_mx. E.g. segments very close to the current lines that we want to set OD to 0.
         if config.has_option('config', 'excluded_od_segments'):
             exclude_segments = self.process_lines(json.loads(config.get('config', 'excluded_od_segments')))
-            exclude_pairs = torch.Tensor([]).long().to(device)
+            exclude_pairs = torch.Tensor([], device=device).long()
             for s in exclude_segments:
                 # Create two-way combinations of each segment.
                 # e.g. segment: 1-2-3-4, pairs: 1-2, 2-1, 1-3, 3-1, 1-4, 4-1, ... etc
@@ -195,4 +195,4 @@ class Environment(object):
             for j in range(self.grid_y_size):
                 xs.append(i)
                 ys.append(j)
-        self.static = torch.Tensor([[xs, ys]]).to(device) # should be float32
+        self.static = torch.Tensor([[xs, ys]], device=device) # should be float32
