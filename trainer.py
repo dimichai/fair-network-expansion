@@ -1,5 +1,4 @@
 import datetime
-from os import environ
 import os
 from pathlib import Path
 import time

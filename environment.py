@@ -90,7 +90,8 @@ class Environment(object):
         mask = mask_initial.index_fill_(1, vector_index_allow, 1).float()  # the first 1: dim , the second 1: value
 
         return mask
- 
+    
+    # TODO: consider changing this to only calculate the mask based on stationed grids, not every grid covered by old lines.
     def satisfied_od_mask(self, tour_idx: torch.Tensor) -> torch.Tensor:
         """Computes a boolean mask of the satisfied OD flows of a given line (tour).
 
