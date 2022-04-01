@@ -96,25 +96,30 @@ class Environment(object):
         sat_od_pairs = torch.combinations(tour_idx.flatten(), 2)
 
         # Satisfied OD pairs from the new line, by considering connections to existing lines.
-        for line in self.existing_lines:
-            intersection_indices = ((tour_idx - line) == 0).nonzero()
-            if intersection_indices.size()[0] != 0:
+        # For each line, we look for intersections to the existing lines (full, not only grids with stations).
+        # If intersection is found, we add the extra satisfied ODs
+        for i, line_full in enumerate(self.existing_lines_full):
+            line = self.existing_lines[i]
+            intersection_full_line = ((tour_idx - line_full) == 0).nonzero()
+            if intersection_full_line.size()[0] != 0:
+                intersection_station_line = ((tour_idx - line) == 0).nonzero()
+
+                # We filter the line grids based on the intersection between the new line and the sations of old lines.
                 line_mask = torch.ones(line.numel(), dtype=torch.bool)
-                line_mask[intersection_indices[:, 0]] = False
+                line_mask[intersection_station_line[:, 0]] = False
                 line_connections = line[line_mask]
                 
+                # We filter the tour grids based on the intersection between the new line and the full old lines.
+                # Note: here we use the full line filter, because we want to leave out the connection of the intersection
+                # between the new line and existing line stations, as we assume this is already covered by the existing lines.
                 tour_mask = torch.ones(tour_idx.numel(), dtype=torch.bool)
-                tour_mask[intersection_indices[:, 1]] = False
+                tour_mask[intersection_full_line[:, 1]] = False
                 # Note this won't work with multi-dimensional tour_idx
                 tour_connections = tour_idx[0, tour_mask]
-                
-                # all_connections = torch.cat((line_connections.flatten(), tour_connections))
-                # conn_sat_od_pairs = torch.combinations(all_connections, 2)
+
                 conn_sat_od_pairs = torch.cartesian_prod(tour_connections, line_connections.flatten())
-                
                 sat_od_pairs = torch.cat((sat_od_pairs, conn_sat_od_pairs))
         
-        print('done')
 
 
     def __init__(self, path):
