@@ -10,6 +10,8 @@ from critic import StateCritic
 from environments.xian.constraints import allowed_next_vector_indices
 import constants
 from reward import od_utility
+from environment import Environment
+import matplotlib.pyplot as plt
 
 device = constants.device
 
@@ -29,7 +31,7 @@ def update_dynamic(dynamic, current_selected_index):
 
     return dynamic
 
-def train(actor, critic, environment, args):
+def train(actor, critic, environment: Environment, args):
     # now = '%s' % datetime.datetime.now().time().replace(':', '_')
     now = datetime.datetime.today().strftime('%Y%m%d_%H_%M_%S.%f')
     save_dir = args.result_path / now
@@ -54,14 +56,89 @@ def train(actor, critic, environment, args):
 
         epoch_start = time.time()
         od_list, social_equity_list = [], []
-
-        for example_id in range(args.train_size):  # this loop accumulates a batch
+        actor_loss = critic_loss = rewards_sum = 0
+        
+        for _ in range(args.train_size):  # this loop accumulates a batch
             tour_idx, tour_logp = actor(static, dynamic, args.station_num_lim, budget=args.budget,
                                     line_unit_price=args.line_unit_price, station_price=args.station_price,
                                     decoder_input=None, last_hh=None)
 
             # TODO: add different conditions for calculating the reward function.
             reward = od_utility(tour_idx, environment)
+            od_list.append(reward.item())
+            social_equity_list.append(0)
+
+            critic_est = critic(static, dynamic, args.hidden_size, environment.grid_x_size, environment.grid_y_size).view(-1)
+            advantage = (reward - critic_est)
+            per_actor_loss = -advantage.detach() * tour_logp.sum(dim=1)
+            per_critic_loss = advantage ** 2
+           
+            actor_loss += per_actor_loss
+            critic_loss += per_critic_loss
+            rewards_sum += reward
+        
+        actor_loss = actor_loss / args.train_size
+        critic_loss = critic_loss / args.train_size
+        avg_reward = rewards_sum / args.train_size
+        average_od = sum(od_list)/len(od_list)
+        average_Ac = sum(social_equity_list)/len(social_equity_list)
+
+        average_reward_list.append(avg_reward.half().item())
+        actor_loss_list.append(actor_loss.half().item())
+        critic_loss_list.append(critic_loss.half().item())
+        average_od_list.append(average_od)
+        average_Ac_list.append(average_Ac)
+
+        actor_optim.zero_grad()
+        actor_loss.backward()
+        torch.nn.utils.clip_grad_norm_(actor.parameters(), args.max_grad_norm)
+        actor_optim.step()
+
+        critic_optim.zero_grad()
+        critic_loss.backward()
+        torch.nn.utils.clip_grad_norm_(critic.parameters(), args.max_grad_norm)
+        critic_optim.step()
+
+        cost_time = time.time() - epoch_start
+        print('epoch %d, average_reward: %2.3f, actor_loss: %2.4f,  critic_loss: %2.4f, cost_time: %2.4fs'
+              % (epoch, avg_reward.item(), actor_loss.item(), critic_loss.item(), cost_time))
+
+        torch.cuda.empty_cache() # reduce memory
+
+        # Save the weights of an epoch
+        epoch_dir = checkpoint_dir / str(epoch)
+        if not os.path.exists(epoch_dir):
+            os.makedirs(epoch_dir)
+
+        torch.save(actor.state_dict(), epoch_dir / 'actor.pt')
+        torch.save(critic.state_dict(), epoch_dir / 'critic.pt')
+
+        # Save best model parameters
+        if avg_reward.item() > best_reward:
+            best_reward = avg_reward.item()
+
+            torch.save(actor.state_dict(), save_dir / 'actor.pt')
+            torch.save(critic.state_dict(), save_dir / 'critic.pt')
+
+
+    with open(save_dir / 'reward_actloss_criloss.txt', 'w') as f:
+        for i in range(args.epoch_max):
+            per_average_reward_record = average_reward_list[i]
+            per_actor_loss_record = actor_loss_list[i]
+            per_critic_loss_record = critic_loss_list[i]
+            per_epoch_od = average_od_list[i]
+            per_epoch_Ac = average_Ac_list[i]
+
+            to_write = f'{per_average_reward_record}\t{per_actor_loss_record}\t{per_critic_loss_record}\t{per_epoch_od}\t{per_epoch_Ac}\n'
+
+            f.write(to_write)
+
+    plt.plot(average_reward_list, '-', label="reward")
+    plt.title(f'Reward vs. epochs - {now}')
+    plt.ylabel('Reward')
+    plt.legend(loc='best')
+    plt.savefig(save_dir / 'loss.png', dpi=800)
+
 
 
 class Trainer(object):

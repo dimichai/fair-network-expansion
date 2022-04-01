@@ -90,8 +90,16 @@ class Environment(object):
         mask = mask_initial.index_fill_(1, vector_index_allow, 1).float()  # the first 1: dim , the second 1: value
 
         return mask
+ 
+    def satisfied_od_mask(self, tour_idx: torch.Tensor) -> torch.Tensor:
+        """Computes a boolean mask of the satisfied OD flows of a given line (tour).
 
-    def satisfied_od_flows(self, tour_idx):
+        Args:
+            tour_idx (torch.Tensor): vector indices resembling a line.
+
+        Returns:
+            torch.Tensor: mask of self.grid_size * self.grid_size of satisfied OD flows.
+        """
         # Satisfied OD pairs from the new line, only considering the new line od demand.
         sat_od_pairs = torch.combinations(tour_idx.flatten(), 2)
 
@@ -120,7 +128,11 @@ class Environment(object):
                 conn_sat_od_pairs = torch.cartesian_prod(tour_connections, line_connections.flatten())
                 sat_od_pairs = torch.cat((sat_od_pairs, conn_sat_od_pairs))
         
-
+        # Calculate a mask over the OD matrix, based on the satisfied OD pairs.
+        od_mask = torch.zeros(self.grid_size, self.grid_size).byte().to(device)
+        od_mask[sat_od_pairs[:, 0], sat_od_pairs[:, 1]] = 1
+        
+        return od_mask
 
     def __init__(self, path):
         """Initialise city environment.
