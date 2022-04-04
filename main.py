@@ -17,7 +17,7 @@ if __name__ == "__main__":
     parser.add_argument('--dropout', default=0.1, type=float)
     parser.add_argument('--checkpoint', default=None)
     parser.add_argument('--test', action='store_true', default=False)
-    parser.add_argument('--epoch_max', default=2, type=int)
+    parser.add_argument('--epoch_max', default=3500, type=int)
     parser.add_argument('--train_size',default=128, type=int) # like a batch_size
     parser.add_argument('--line_unit_price', default=1.0, type=float)
     parser.add_argument('--station_price', default=5.0, type=float)

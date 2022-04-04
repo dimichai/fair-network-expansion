@@ -148,9 +148,9 @@ def allowed_next_vector_indices(selected_idx, selected_g_idx, last_grid, directi
             allowed_v = allowed_v[~np.isin(allowed_v, adjacent_stations)]
 
         if not allowed_v.size()[0]:
-            allowed_v = torch.Tensor([], device=device).long()
+            allowed_v = torch.Tensor([]).long().to(device)
 
     else:
-        allowed_v = torch.Tensor([], device=device).long()
+        allowed_v = torch.Tensor([]).long().to(device)
 
     return direction_vector, allowed_v
