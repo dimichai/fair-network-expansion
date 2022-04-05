@@ -161,8 +161,11 @@ class Environment(object):
         self.od_mx = matrix_from_file(path / 'od.txt', self.grid_size, self.grid_size)
         # TODO: consider doing the normalization in matrix_from_file with an argument.
         self.od_mx = self.od_mx / torch.max(self.od_mx)
-        self.price_mx = matrix_from_file(path / 'average_house_price_gid.txt', self.grid_x_size, self.grid_y_size)
-        self.price_mx = self.price_mx / torch.max(self.price_mx)
+        try:
+            self.price_mx = matrix_from_file(path / 'average_house_price_gid.txt', self.grid_x_size, self.grid_y_size)
+            self.price_mx = self.price_mx / torch.max(self.price_mx)
+        except FileNotFoundError:
+            print('Price matrix not available.')
 
         # Read existing metro lines of the environment.
         # json is used to load lists from ConfigParser as there is no built in way to do it.
@@ -178,6 +181,9 @@ class Environment(object):
         # Apply excluded OD segments to the od_mx. E.g. segments very close to the current lines that we want to set OD to 0.
         if config.has_option('config', 'excluded_od_segments'):
             exclude_segments = self.process_lines(json.loads(config.get('config', 'excluded_od_segments')))
+            if len(exclude_segments) == 0:
+                return
+
             exclude_pairs = torch.Tensor([]).long().to(device)
             for s in exclude_segments:
                 # Create two-way combinations of each segment.
