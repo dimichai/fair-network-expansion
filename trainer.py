@@ -59,6 +59,8 @@ class Trainer(object):
             self.actor.load_state_dict(torch.load(args.checkpoint / 'actor.pt', device))
             self.critic.load_state_dict(torch.load(args.checkpoint / 'critic.pt', device))
 
+        print(f'Starts training on {device}')
+
         now = datetime.datetime.today().strftime('%Y%m%d_%H_%M_%S.%f')
         save_dir = args.result_path / now
 
@@ -89,8 +91,6 @@ class Trainer(object):
                 tour_idx, tour_logp = self.actor(static, dynamic, args.station_num_lim, budget=args.budget,
                                             line_unit_price=args.line_unit_price, station_price=args.station_price,
                                             decoder_input=None, last_hh=None)
-
-                # print(f'Generated line: {tour_idx} - length{tour_idx.shape[1]}')
 
                 # TODO: add different conditions for calculating the reward function.
                 reward = od_utility(tour_idx, self.environment)
