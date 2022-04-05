@@ -34,6 +34,7 @@ if __name__ == "__main__":
 
     # Prepare the environments.
     xian = Environment(Path('./environments/xian'))
+    # diag = Environment(Path('./environments/diagonal_5x5'))
 
     trainer_xian = Trainer(xian, args)
 

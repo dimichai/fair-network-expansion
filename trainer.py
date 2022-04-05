@@ -9,7 +9,6 @@ from critic import StateCritic
 from environments.xian.constraints import allowed_next_vector_indices
 import constants
 from reward import od_utility
-from environment import Environment
 import matplotlib.pyplot as plt
 
 device = constants.device
