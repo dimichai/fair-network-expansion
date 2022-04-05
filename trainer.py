@@ -59,10 +59,10 @@ class Trainer(object):
             self.actor.load_state_dict(torch.load(args.checkpoint / 'actor.pt', device))
             self.critic.load_state_dict(torch.load(args.checkpoint / 'critic.pt', device))
 
-        print(f'Starts training on {device}')
-
         now = datetime.datetime.today().strftime('%Y%m%d_%H_%M_%S.%f')
         save_dir = args.result_path / now
+
+        print(f'Starts training on {device} - Model location is {save_dir}')
 
         checkpoint_dir = save_dir / 'checkpoints'
         if not os.path.exists(checkpoint_dir):
