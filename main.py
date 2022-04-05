@@ -7,6 +7,8 @@ from trainer import Trainer
 from pathlib import Path
 from environments.xian.constraints import allowed_next_vector_indices
 
+torch.manual_seed(0)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fair Network Expansion with Reinforcement Learning")
 
@@ -34,6 +36,10 @@ if __name__ == "__main__":
     xian = Environment(Path('./environments/xian'))
 
     trainer_xian = Trainer(xian, args)
+
+    # TODO: maybe make it so that if there is a checkpoint, training log continues from that epoch and not from the start
+    if not args.test:
+        trainer_xian.train(args)
 
     # dir_v, allowed_v = allowed_next_vector_indices(242, torch.Tensor([[8, 10]]).long(), torch.Tensor([[8, 11]]).long(), torch.Tensor([[0, 0, 0, 0, 1, 0, 1, 0]]).long())
     # print(dir_v, allowed_v)
