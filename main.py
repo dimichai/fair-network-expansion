@@ -1,7 +1,5 @@
 import argparse
 
-import torch
-from actor import DRL4Metro
 from constraints import ForwardConstraints
 from environment import Environment
 from trainer import Trainer
@@ -33,16 +31,19 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Prepare the environments.
-    xian = Environment(Path('./environments/xian'))
-    # diag = Environment(Path('./environments/diagonal_5x5'))
-
-    constraints = ForwardConstraints(xian.grid_x_size, xian.grid_y_size, xian.existing_lines_full, xian.grid_to_vector)
-
-    trainer_xian = Trainer(xian, constraints, args)
+    # xian = Environment(Path('./environments/xian'))
+    # constraints = ForwardConstraints(xian.grid_x_size, xian.grid_y_size, xian.existing_lines_full, xian.grid_to_vector)
+    # trainer_xian = Trainer(xian, constraints, args)
 
     # TODO: maybe make it so that if there is a checkpoint, training log continues from that epoch and not from the start
+    # if not args.test:
+        # trainer_xian.train(args)
+
+    diag = Environment(Path('./environments/diagonal_5x5'))
+    constraints_diag = ForwardConstraints(diag.grid_x_size, diag.grid_y_size, diag.existing_lines_full, diag.grid_to_vector)
+    trainer_diag = Trainer(diag, constraints_diag, args)
+    
     if not args.test:
-        trainer_xian.train(args)
-        
+        trainer_diag.train(args)
 
     print("made it!")
