@@ -5,8 +5,8 @@ import time
 import torch
 import torch.optim as optim
 from actor import DRL4Metro
+from constraints import Constraints
 from critic import StateCritic
-from environments.xian.constraints import allowed_next_vector_indices
 import constants
 from reward import od_utility
 import matplotlib.pyplot as plt
@@ -34,7 +34,7 @@ def update_dynamic(dynamic, current_selected_index):
 class Trainer(object):
     """Responsible for the wholet raining process."""
 
-    def __init__(self, environment, args):
+    def __init__(self, environment, constraints: Constraints, args):
         super(Trainer, self).__init__()
 
         # Prepare the models
@@ -48,7 +48,7 @@ class Trainer(object):
                           update_dynamic,
                           environment.update_mask,
                           v_to_g_fn=environment.vector_to_grid,
-                          vector_allow_fn=allowed_next_vector_indices).to(device)
+                          vector_allow_fn=constraints.allowed_vector_indices).to(device)
 
         self.critic = StateCritic(args.static_size, args.dynamic_size,
                              args.hidden_size, environment.grid_size).to(device)

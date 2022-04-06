@@ -2,10 +2,10 @@ import argparse
 
 import torch
 from actor import DRL4Metro
+from constraints import ForwardConstraints
 from environment import Environment
 from trainer import Trainer
 from pathlib import Path
-from environments.xian.constraints import allowed_next_vector_indices
 
 torch.manual_seed(0)
 
@@ -36,7 +36,9 @@ if __name__ == "__main__":
     xian = Environment(Path('./environments/xian'))
     # diag = Environment(Path('./environments/diagonal_5x5'))
 
-    trainer_xian = Trainer(xian, args)
+    constraints = ForwardConstraints(xian.grid_x_size, xian.grid_y_size, xian.existing_lines_full, xian.grid_to_vector)
+
+    trainer_xian = Trainer(xian, constraints, args)
 
     # TODO: maybe make it so that if there is a checkpoint, training log continues from that epoch and not from the start
     if not args.test:
