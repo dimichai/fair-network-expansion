@@ -53,6 +53,11 @@ class Trainer(object):
                              args.hidden_size, environment.grid_size).to(device)
 
     def train(self, args):
+        """Performs the training over batches and epochs.
+
+        Args:
+            args (argparse.Namespace): parsed console arguments.
+        """
         if args.checkpoint:
             self.actor.load_state_dict(torch.load(args.checkpoint / 'actor.pt', device))
             self.critic.load_state_dict(torch.load(args.checkpoint / 'critic.pt', device))

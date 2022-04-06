@@ -43,16 +43,6 @@ if __name__ == "__main__":
     # TODO: maybe make it so that if there is a checkpoint, training log continues from that epoch and not from the start
     if not args.test:
         trainer_xian.train(args)
-
-    # dir_v, allowed_v = allowed_next_vector_indices(242, torch.Tensor([[8, 10]]).long(), torch.Tensor([[8, 11]]).long(), torch.Tensor([[0, 0, 0, 0, 1, 0, 1, 0]]).long())
-    # print(dir_v, allowed_v)
-    # # correct is tensor([[0, 0, 0, 0, 1, 0, 1, 0]]), tensor([240, 241, 269, 270, 271, 298, 299, 300])
-
-    # dir_v, allowed_v = allowed_next_vector_indices(310, torch.Tensor([[10, 20]]).long(), torch.Tensor([[8, 20]]).long(), torch.Tensor([[0, 0, 0, 0, 0, 0, 0, 0]]).long())
-    # print(dir_v, allowed_v)
-    # # correct is tensor([[0, 0, 0, 0, 1, 0, 0, 0]]), tensor([308, 309, 311, 312, 337, 338, 339, 340, 341, 366, 367, 368, 369, 370])
+        
 
     print("made it!")
-
-    # Initialise trainer
-    # trainer = Trainer()
