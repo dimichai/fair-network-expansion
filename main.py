@@ -7,7 +7,7 @@ from environment import Environment
 from trainer import Trainer
 from pathlib import Path
 
-torch.manual_seed(0)
+# torch.manual_seed(0)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fair Network Expansion with Reinforcement Learning")

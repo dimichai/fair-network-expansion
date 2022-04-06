@@ -38,7 +38,6 @@ class Trainer(object):
         super(Trainer, self).__init__()
 
         # Prepare the models
-        # TODO: replace allowed_next_vector_indices with environment.constraints... whatever
         self.environment = environment
         self.actor = DRL4Metro(args.static_size,
                           args.dynamic_size,
