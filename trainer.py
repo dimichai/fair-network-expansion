@@ -1,8 +1,10 @@
 import csv
 import datetime
+from environment import Environment
 import os
 from pathlib import Path
 import time
+import numpy as np
 import torch
 import torch.optim as optim
 from actor import DRL4Metro
@@ -35,7 +37,7 @@ def update_dynamic(dynamic, current_selected_index):
 class Trainer(object):
     """Responsible for the wholet raining process."""
 
-    def __init__(self, environment, constraints: Constraints, args):
+    def __init__(self, environment: Environment, constraints: Constraints, args):
         super(Trainer, self).__init__()
 
         # Prepare the models
@@ -52,6 +54,27 @@ class Trainer(object):
 
         self.critic = StateCritic(args.static_size, args.dynamic_size,
                              args.hidden_size, environment.grid_size).to(device)
+
+    def gen_line_plot_grid(self, lines):
+        """Generates a grid_x_max * grid_y_max grid where each grid is valued by the frequency it appears in the generated lines.
+        Essentially creates a grid of the given line to plot later on.
+
+        Args:
+            line (list): list of generated lines of the model
+            grid_x_max (int): nr of lines in the grid
+            grid_y_mask (int): nr of columns in the grid
+        """
+        data = np.zeros((self.environment.grid_x_size, self.environment.grid_y_size))
+
+        for line in lines:
+            line_g = self.environment.vector_to_grid(line)
+
+            for i in range(line_g.shape[1]):
+                data[line_g[0, i], line_g[1, i]] += 1
+        
+        data = data/len(lines)
+
+        return data
 
     def train(self, args):
         """Performs the training over batches and epochs.
@@ -176,25 +199,31 @@ class Trainer(object):
         print(f'Finished training in {(time.time() - train_start)/60} minutes.')
 
     def evaluate(self, args):
-        assert args.checkpoint, 'args.checkpoint folder needs to be given to evalute a model'
+        assert args.result_path, 'args.checkpoint folder needs to be given to evalute a model'
 
         self.actor.eval()
 
-        self.actor.load_state_dict(torch.load(args.checkpoint / 'actor.pt', device))
-        self.critic.load_state_dict(torch.load(args.checkpoint / 'critic.pt', device))
-
+        self.actor.load_state_dict(torch.load(Path(args.result_path, 'actor.pt'), device))
+        self.critic.load_state_dict(torch.load(Path(args.result_path, 'critic.pt'), device))
 
         static = self.environment.static
         dynamic = torch.zeros((1, args.dynamic_size, self.environment.grid_size),
                             device=device).float()  # size with batch
 
         # generate 128 different lines to have a bigger sample size
-        covered_idx = []
+        gen_lines = []
         for _ in range(args.train_size):
             with torch.no_grad():
                 tour_idx, _ = self.actor(static, dynamic, args.station_num_lim, decoder_input=None, last_hh=None)
-                covered_idx.append(tour_idx[0].tolist())
+                gen_lines.append(tour_idx)
 
-        with open(args.checkpoint / 'tour_idx_multiple.txt', "w", newline='') as f:
+        with open(Path(args.result_path, 'tour_idx_multiple.txt'), "w", newline='') as f:
             wr = csv.writer(f)
-            wr.writerows(covered_idx)
+            wr.writerows([line[0].tolist() for line in gen_lines])
+
+        # Plot the average generated line (from the multiple sample generated lines)
+        plot_grid = self.gen_line_plot_grid(gen_lines)
+        fig, ax = plt.subplots(figsize=(5, 5))
+        ax.imshow(plot_grid)
+        fig.suptitle(f'{args.environment} - Average Generated line \n from {args.result_path}')
+        fig.savefig(Path(args.result_path, 'average_generated_line.png'))

@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
     if not args.test:
         trainer.train(args)
-
-    trainer.evaluate(args)
+    else:
+        trainer.evaluate(args)
 
     print("made it!")
