@@ -1,3 +1,4 @@
+import csv
 import datetime
 import os
 from pathlib import Path
@@ -63,8 +64,9 @@ class Trainer(object):
             self.critic.load_state_dict(torch.load(args.checkpoint / 'critic.pt', device))
 
         now = datetime.datetime.today().strftime('%Y%m%d_%H_%M_%S.%f')
-        save_dir = args.result_path / now
+        save_dir = args.result_path / f'{args.environment}_{now}'
 
+        train_start = time.time()
         print(f'Starts training on {device} - Model location is {save_dir}')
 
         checkpoint_dir = save_dir / 'checkpoints'
@@ -170,3 +172,29 @@ class Trainer(object):
         plt.ylabel('Reward')
         plt.legend(loc='best')
         plt.savefig(save_dir / 'loss.png', dpi=800)
+
+        print(f'Finished training in {(time.time() - train_start)/60} minutes.')
+
+    def evaluate(self, args):
+        assert args.checkpoint, 'args.checkpoint folder needs to be given to evalute a model'
+
+        self.actor.eval()
+
+        self.actor.load_state_dict(torch.load(args.checkpoint / 'actor.pt', device))
+        self.critic.load_state_dict(torch.load(args.checkpoint / 'critic.pt', device))
+
+
+        static = self.environment.static
+        dynamic = torch.zeros((1, args.dynamic_size, self.environment.grid_size),
+                            device=device).float()  # size with batch
+
+        # generate 128 different lines to have a bigger sample size
+        covered_idx = []
+        for _ in range(args.train_size):
+            with torch.no_grad():
+                tour_idx, _ = self.actor(static, dynamic, args.station_num_lim, decoder_input=None, last_hh=None)
+                covered_idx.append(tour_idx[0].tolist())
+
+        with open(args.checkpoint / 'tour_idx_multiple.txt', "w", newline='') as f:
+            wr = csv.writer(f)
+            wr.writerows(covered_idx)

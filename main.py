@@ -17,7 +17,7 @@ if __name__ == "__main__":
     parser.add_argument('--dropout', default=0.1, type=float)
     parser.add_argument('--checkpoint', default=None)
     parser.add_argument('--test', action='store_true', default=False)
-    parser.add_argument('--epoch_max', default=3500, type=int)
+    parser.add_argument('--epoch_max', default=300, type=int)
     parser.add_argument('--train_size',default=128, type=int) # like a batch_size
     parser.add_argument('--line_unit_price', default=1.0, type=float)
     parser.add_argument('--station_price', default=5.0, type=float)
@@ -27,23 +27,18 @@ if __name__ == "__main__":
     parser.add_argument('--station_num_lim', default=45, type=int)  # limit the number of stations in a line
     parser.add_argument('--budget', default=210, type=int)
     parser.add_argument('--max_grad_norm', default=2., type=float)
+    parser.add_argument('--environment', default='diagonal_5x5', type=str)
+    
 
     args = parser.parse_args()
 
-    # Prepare the environments.
-    # xian = Environment(Path('./environments/xian'))
-    # constraints = ForwardConstraints(xian.grid_x_size, xian.grid_y_size, xian.existing_lines_full, xian.grid_to_vector)
-    # trainer_xian = Trainer(xian, constraints, args)
+    environment = Environment(Path(f"./environments/{args.environment}"))
+    constraints = ForwardConstraints(environment.grid_x_size, environment.grid_y_size, environment.existing_lines_full, environment.grid_to_vector)
+    trainer = Trainer(environment, constraints, args)
 
-    # TODO: maybe make it so that if there is a checkpoint, training log continues from that epoch and not from the start
-    # if not args.test:
-        # trainer_xian.train(args)
-
-    diag = Environment(Path('./environments/diagonal_5x5'))
-    constraints_diag = ForwardConstraints(diag.grid_x_size, diag.grid_y_size, diag.existing_lines_full, diag.grid_to_vector)
-    trainer_diag = Trainer(diag, constraints_diag, args)
-    
     if not args.test:
-        trainer_diag.train(args)
+        trainer.train(args)
+
+    trainer.evaluate(args)
 
     print("made it!")
