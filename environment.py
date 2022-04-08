@@ -54,11 +54,19 @@ class Environment(object):
             torch.Tensor: covnerted grid index.
         """
 
-        grid_x = (vector_idx // self.grid_x_size).view(1)
-        grid_y = (vector_idx % self.grid_y_size).view(1)
+        grid_x = (vector_idx // self.grid_x_size)
+        grid_y = (vector_idx % self.grid_y_size)
 
-        return torch.cat((grid_x, grid_y), dim=0).view(1, 2)
+        # Control for when vector_idx is just a tensor of 1 idx vs when it is a tensor of multiple idxs.
+        # TODO: maybe there is a way to do that universally without if
+        if vector_idx.dim() == 0:
+            grid_x = grid_x.view(1)
+            grid_y = grid_y.view(1)
 
+            return torch.cat((grid_x, grid_y), dim=0).view(1, 2)
+
+        return torch.cat((grid_x, grid_y), dim=0)
+        
     def process_lines(self, lines):
         """Creates a list of tensors for each line, from given grid indices. Used to create line/segment representations of metro lines.
 
