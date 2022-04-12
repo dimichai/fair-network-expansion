@@ -171,7 +171,7 @@ class Environment(object):
         self.od_mx = self.od_mx / torch.max(self.od_mx)
         try:
             self.price_mx = matrix_from_file(path / 'average_house_price_gid.txt', self.grid_x_size, self.grid_y_size)
-            self.price_mx = self.price_mx / torch.max(self.price_mx)
+            self.price_mx_norm = self.price_mx / torch.max(self.price_mx)
         except FileNotFoundError:
             print('Price matrix not available.')
 
