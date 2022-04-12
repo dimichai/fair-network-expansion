@@ -203,9 +203,11 @@ class Trainer(object):
 
         self.actor.eval()
 
+        # Load the models.
         self.actor.load_state_dict(torch.load(Path(args.result_path, 'actor.pt'), device))
         self.critic.load_state_dict(torch.load(Path(args.result_path, 'critic.pt'), device))
 
+        # Setup the initial static and dynamic states.
         static = self.environment.static
         dynamic = torch.zeros((1, args.dynamic_size, self.environment.grid_size),
                             device=device).float()  # size with batch
@@ -227,3 +229,5 @@ class Trainer(object):
         ax.imshow(plot_grid)
         fig.suptitle(f'{args.environment} - Average Generated line \n from {args.result_path}')
         fig.savefig(Path(args.result_path, 'average_generated_line.png'))
+
+        
