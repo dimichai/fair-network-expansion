@@ -21,13 +21,13 @@ if __name__ == "__main__":
     parser.add_argument('--train_size',default=128, type=int) # like a batch_size
     parser.add_argument('--line_unit_price', default=1.0, type=float)
     parser.add_argument('--station_price', default=5.0, type=float)
-    parser.add_argument('--result_path', default=Path('./result'), type=str)
+    parser.add_argument('--result_path', default=None, type=str)
     parser.add_argument('--actor_lr', default=10e-4, type=float)
     parser.add_argument('--critic_lr', default=10e-4, type=float)
     parser.add_argument('--station_num_lim', default=45, type=int)  # limit the number of stations in a line
     parser.add_argument('--budget', default=210, type=int)
     parser.add_argument('--max_grad_norm', default=2., type=float)
-    parser.add_argument('--environment', default='diagonal_5x5', type=str)
+    parser.add_argument('--environment', default='xian', type=str)
     
 
     args = parser.parse_args()
