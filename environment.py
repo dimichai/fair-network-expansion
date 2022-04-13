@@ -177,6 +177,7 @@ class Environment(object):
             print('Price matrix not available.')
         
         # If there are group memberships of each grid square, then create an OD matrix for each group.
+        self.group_od_mx = None # initialize it so we can check later on if it has any value
         if groups_file:
             self.grid_groups = matrix_from_file(env_path / groups_file, self.grid_x_size, self.grid_y_size)
             # matrix_from_file initializes a tensor with torch.zeros - we convert them to nans
@@ -184,12 +185,12 @@ class Environment(object):
             # Get all unique groups
             groups = self.grid_groups[~self.grid_groups.isnan()].unique()
             # Create a group-specific od matrix for each group.
-
             self.group_od_mx = []
             for g in groups:
-                group_mask = self.grid_to_vector((self.grid_groups == g).nonzero())
-                # Divide by 2 because OD matrix is symmetrical
-                self.group_od_mx.append(self.od_mx[group_mask])
+                group_mask = torch.zeros(self.od_mx.shape)
+                group_squares = self.grid_to_vector((self.grid_groups == g).nonzero())
+                group_mask[group_squares, :] = 1
+                self.group_od_mx.append(group_mask * self.od_mx)
 
         # Read existing metro lines of the environment.
         # json is used to load lists from ConfigParser as there is no built in way to do it.
