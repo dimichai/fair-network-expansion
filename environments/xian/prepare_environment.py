@@ -1,6 +1,9 @@
 #%%
 # To run this file you should be on the root folder of the project and then run python ./environments/xian/prepare_environment.py
 
+import sys
+sys.path.append('./')
+
 # from constants import constants
 from asyncore import write
 from collections import defaultdict
