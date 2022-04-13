@@ -5,8 +5,6 @@ import sys
 sys.path.append('./')
 
 # from constants import constants
-from asyncore import write
-from collections import defaultdict
 from pathlib import Path
 # import pandas as pd
 import torch
