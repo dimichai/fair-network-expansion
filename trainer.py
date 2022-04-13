@@ -242,9 +242,20 @@ class Trainer(object):
                     satisfied_group_ods[i, j] = (g_od * sat_od_mask).sum().item()
 
         mean_sat_od = satisfied_ods.mean()
+        mean_sat_od_pct = mean_sat_od / (self.environment.od_mx.sum() / 2)
+        mean_sat_od_by_group = satisfied_group_ods.mean(axis=0)
+        mean_sat_od_by_group_pct = mean_sat_od_by_group / [g.sum()/2 for g in self.environment.group_od_mx]
+        total_group_od = sum([g.sum()/2 for g in self.environment.group_od_mx])
         # print average satisfied flows and the satisfied share
         # total od matrix sum is divided by 2 because it is symmetrical.
-        print(f'Average satisfied origin destination flows: {mean_sat_od} - ({mean_sat_od / (self.environment.od_mx.sum() / 2)})')
-        print(f'Average satisfied origin destination flows by group: {satisfied_group_ods.mean(axis=0)} - {satisfied_group_ods.mean(axis=0) / [g.sum()/2 for g in self.environment.group_od_mx]}')
+        print(f'Average satisfied origin destination flows: {mean_sat_od} ({mean_sat_od_pct})')
+        print(f'Average satisfied origin destination flows by group: {mean_sat_od_by_group} ({mean_sat_od_by_group_pct})')
 
+        # Plot bars of satisfied ODs by group and overall
+        fig, axs = plt.subplots(1, 2, figsize=(15, 5))
+        axs[0].bar(range(mean_sat_od_by_group.shape[0]), mean_sat_od_by_group)
+        axs[0].title.set_text(f'Mean Satisfied OD by group \n Total OD: {round(mean_sat_od, 2)} - Total group OD: {round(mean_sat_od_by_group.sum(), 2)} \n Model: {args.result_path}')
+        axs[1].bar(range(mean_sat_od_by_group.shape[0]), mean_sat_od_by_group_pct)
+        axs[1].title.set_text(f'Mean Satisfied OD % by group \n Total OD: {mean_sat_od_pct} - Total group OD: {sum(mean_sat_od_by_group)/total_group_od}  \n Model: {args.result_path}')
 
+        fig.savefig(Path(args.result_path, 'satisfied_od_by_group.png'))
