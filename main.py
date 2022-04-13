@@ -32,7 +32,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    environment = Environment(Path(f"./environments/{args.environment}"))
+    environment = Environment(Path(f"./environments/{args.environment}"), groups_file='price_groups_5.txt')
     constraints = ForwardConstraints(environment.grid_x_size, environment.grid_y_size, environment.existing_lines_full, environment.grid_to_vector)
     trainer = Trainer(environment, constraints, args)
 

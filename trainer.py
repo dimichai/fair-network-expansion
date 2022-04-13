@@ -87,7 +87,7 @@ class Trainer(object):
             self.critic.load_state_dict(torch.load(args.checkpoint / 'critic.pt', device))
 
         now = datetime.datetime.today().strftime('%Y%m%d_%H_%M_%S.%f')
-        save_dir = args.result_path / f'{args.environment}_{now}'
+        save_dir = Path('./result') / f'{args.environment}_{now}'
 
         train_start = time.time()
         print(f'Starts training on {device} - Model location is {save_dir}')
@@ -230,4 +230,4 @@ class Trainer(object):
         fig.suptitle(f'{args.environment} - Average Generated line \n from {args.result_path}')
         fig.savefig(Path(args.result_path, 'average_generated_line.png'))
 
-        
+

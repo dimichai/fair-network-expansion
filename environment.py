@@ -9,6 +9,7 @@ device = constants.device
 def matrix_from_file(path, size_x, size_y):
     """Reads a grid file that is structured as idx1,idx2,weight and creates a matrix representation of it.
     It is used to read ses variables per grid, od matrices, etc.
+    Note: non-existing values are assigned 0.
 
     Args:
         path (string): the path of the file.
@@ -143,17 +144,18 @@ class Environment(object):
         
         return od_mask
 
-    def __init__(self, path):
+    def __init__(self, env_path, groups_file=None):
         """Initialise city environment.
 
         Args:
-            path (Path): path to the folder that contains the needed initialisation files of the environment.
+            env_path (Path): path to the folder that contains the needed initialisation files of the environment.
+            groups_file (str): file within envirnoment folder that contains group membership for each grid square.
         """
         super(Environment, self).__init__()
 
         # read configuration file that contains basic parameters for the environment.
         config = configparser.ConfigParser()
-        config.read(path / 'config.txt')
+        config.read(env_path / 'config.txt')
         assert 'config' in config
 
         # size of the grid
@@ -166,14 +168,28 @@ class Environment(object):
         # self.dynamic_size = config.getint('config', 'dynamic_size')
 
         # Build the normalized OD and SES matrices.
-        self.od_mx = matrix_from_file(path / 'od.txt', self.grid_size, self.grid_size)
-        # TODO: consider doing the normalization in matrix_from_file with an argument.
+        self.od_mx = matrix_from_file(env_path / 'od.txt', self.grid_size, self.grid_size)
         self.od_mx = self.od_mx / torch.max(self.od_mx)
         try:
-            self.price_mx = matrix_from_file(path / 'average_house_price_gid.txt', self.grid_x_size, self.grid_y_size)
+            self.price_mx = matrix_from_file(env_path / 'average_house_price_gid.txt', self.grid_x_size, self.grid_y_size)
             self.price_mx_norm = self.price_mx / torch.max(self.price_mx)
         except FileNotFoundError:
             print('Price matrix not available.')
+        
+        # If there are group memberships of each grid square, then create an OD matrix for each group.
+        if groups_file:
+            self.grid_groups = matrix_from_file(env_path / groups_file, self.grid_x_size, self.grid_y_size)
+            # matrix_from_file initializes a tensor with torch.zeros - we convert them to nans
+            self.grid_groups[self.grid_groups == 0] = float('nan')
+            # Get all unique groups
+            groups = self.grid_groups[~self.grid_groups.isnan()].unique()
+            # Create a group-specific od matrix for each group.
+
+            self.group_od_mx = []
+            for g in groups:
+                group_mask = self.grid_to_vector((self.grid_groups == g).nonzero())
+                # Divide by 2 because OD matrix is symmetrical
+                self.group_od_mx.append(self.od_mx[group_mask])
 
         # Read existing metro lines of the environment.
         # json is used to load lists from ConfigParser as there is no built in way to do it.
