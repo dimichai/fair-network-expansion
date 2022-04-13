@@ -189,7 +189,9 @@ class Environment(object):
             for g in groups:
                 group_mask = torch.zeros(self.od_mx.shape)
                 group_squares = self.grid_to_vector((self.grid_groups == g).nonzero())
+                # Original OD matrix is symmetrical, so group OD matrices should also be symmetrical.
                 group_mask[group_squares, :] = 1
+                group_mask[:, group_squares] = 1
                 self.group_od_mx.append(group_mask * self.od_mx)
 
         # Read existing metro lines of the environment.

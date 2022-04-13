@@ -28,11 +28,12 @@ if __name__ == "__main__":
     parser.add_argument('--budget', default=210, type=int)
     parser.add_argument('--max_grad_norm', default=2., type=float)
     parser.add_argument('--environment', default='xian', type=str)
+    parser.add_argument('--groups_file', default=None, type=str) # file that contains group membership of each grid square.
     
 
     args = parser.parse_args()
 
-    environment = Environment(Path(f"./environments/{args.environment}"), groups_file='price_groups_5.txt')
+    environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file)
     constraints = ForwardConstraints(environment.grid_x_size, environment.grid_y_size, environment.existing_lines_full, environment.grid_to_vector)
     trainer = Trainer(environment, constraints, args)
 

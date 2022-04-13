@@ -230,4 +230,21 @@ class Trainer(object):
         fig.suptitle(f'{args.environment} - Average Generated line \n from {args.result_path}')
         fig.savefig(Path(args.result_path, 'average_generated_line.png'))
 
+        # Evaluate OD metrics
+        satisfied_ods = np.zeros(len(gen_lines))
+        satisfied_group_ods = np.zeros((len(gen_lines), len(self.environment.group_od_mx))) # make an array of dimensions lines x groups to store ods by line by group
+        for i, line in enumerate(gen_lines):
+            sat_od_mask = self.environment.satisfied_od_mask(line)
+            satisfied_ods[i] = (sat_od_mask * self.environment.od_mx).sum().item()
+            
+            if self.environment.group_od_mx:
+                for j, g_od in enumerate(self.environment.group_od_mx):
+                    satisfied_group_ods[i, j] = (g_od * sat_od_mask).sum().item()
+
+        mean_sat_od = satisfied_ods.mean()
+        # print average satisfied flows and the satisfied share
+        # total od matrix sum is divided by 2 because it is symmetrical.
+        print(f'Average satisfied origin destination flows: {mean_sat_od} - ({mean_sat_od / (self.environment.od_mx.sum() / 2)})')
+        print(f'Average satisfied origin destination flows by group: {satisfied_group_ods.mean(axis=0)} - {satisfied_group_ods.mean(axis=0) / [g.sum()/2 for g in self.environment.group_od_mx]}')
+
 
