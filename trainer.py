@@ -120,11 +120,16 @@ class Trainer(object):
                                             line_unit_price=args.line_unit_price, station_price=args.station_price,
                                             decoder_input=None, last_hh=None)
 
-                # TODO: add different conditions for calculating the reward function.
-                # reward = od_utility(tour_idx, self.environment)
-                reward = discounted_development_utility(tour_idx, self.environment)
+                reward = od_utility(tour_idx, self.environment)
                 od_list.append(reward.item())
-                social_equity_list.append(0)
+                ses_reward = torch.zeros(1)
+                if args.reward == 'weighted':
+                    # only calculate ses_reward if necessary
+                    if args.ses_weight > 0:
+                        ses_reward = discounted_development_utility(tour_idx, self.environment)
+                        reward = args.ses_weight * ses_reward + (1-args.ses_weight) * reward
+
+                social_equity_list.append(ses_reward.item())
 
                 critic_est = self.critic(static, dynamic, args.hidden_size,
                                     self.environment.grid_x_size, self.environment.grid_y_size).view(-1)

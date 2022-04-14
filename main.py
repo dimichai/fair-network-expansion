@@ -27,7 +27,12 @@ if __name__ == "__main__":
     parser.add_argument('--station_num_lim', default=45, type=int)  # limit the number of stations in a line
     parser.add_argument('--budget', default=210, type=int)
     parser.add_argument('--max_grad_norm', default=2., type=float)
-    parser.add_argument('--environment', default='xian', type=str)
+    parser.add_argument('--environment', default='diagonal_5x5', type=str)
+    # reward types:
+        # - weighted: a weighted sum of OD and equity reward -> --ses_weight * r_ses + (1-ses_weight) * r_od
+    parser.add_argument('--reward', default='weighted', type=str)
+    parser.add_argument('--ses_weight', default=0, type=float) # weight to assign to the socio-economic status (equity)reward, only works for --reward=weighted
+
     parser.add_argument('--groups_file', default=None, type=str) # file that contains group membership of each grid square (e.g. when each square belongs to a certain income bin).
 
     args = parser.parse_args()

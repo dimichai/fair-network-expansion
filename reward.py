@@ -30,7 +30,7 @@ def discounted_development_utility(tour_idx: torch.Tensor, environment: Environm
         p (float, optional): p-norm distance to calculate: 1: manhattan, 2: euclidean, etc. Defaults to 2.0.
 
     Returns:
-        torch.Tensor: TODO: fill 
+        torch.Tensor: sum of total discounted development utility
     """
     tour_idx_g = environment.vector_to_grid(tour_idx).transpose(0, 1)
     tour_ses = environment.price_mx_norm[tour_idx_g[:, 0], tour_idx_g[:, 1]]
