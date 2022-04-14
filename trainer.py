@@ -11,7 +11,7 @@ from actor import DRL4Metro
 from constraints import Constraints
 from critic import StateCritic
 import constants
-from reward import od_utility
+from reward import od_utility, discounted_development_utility
 import matplotlib.pyplot as plt
 
 device = constants.device
@@ -121,7 +121,8 @@ class Trainer(object):
                                             decoder_input=None, last_hh=None)
 
                 # TODO: add different conditions for calculating the reward function.
-                reward = od_utility(tour_idx, self.environment)
+                # reward = od_utility(tour_idx, self.environment)
+                reward = discounted_development_utility(tour_idx, self.environment)
                 od_list.append(reward.item())
                 social_equity_list.append(0)
 

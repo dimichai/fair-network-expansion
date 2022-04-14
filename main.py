@@ -28,8 +28,7 @@ if __name__ == "__main__":
     parser.add_argument('--budget', default=210, type=int)
     parser.add_argument('--max_grad_norm', default=2., type=float)
     parser.add_argument('--environment', default='xian', type=str)
-    parser.add_argument('--groups_file', default=None, type=str) # file that contains group membership of each grid square.
-    
+    parser.add_argument('--groups_file', default=None, type=str) # file that contains group membership of each grid square (e.g. when each square belongs to a certain income bin).
 
     args = parser.parse_args()
 
