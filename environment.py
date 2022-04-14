@@ -187,7 +187,7 @@ class Environment(object):
             # Create a group-specific od matrix for each group.
             self.group_od_mx = []
             for g in groups:
-                group_mask = torch.zeros(self.od_mx.shape)
+                group_mask = torch.zeros(self.od_mx.shape, device=device)
                 group_squares = self.grid_to_vector((self.grid_groups == g).nonzero())
                 # Original OD matrix is symmetrical, so group OD matrices should also be symmetrical.
                 group_mask[group_squares, :] = 1

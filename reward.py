@@ -36,7 +36,7 @@ def discounted_development_utility(tour_idx: torch.Tensor, environment: Environm
     tour_ses = environment.price_mx_norm[tour_idx_g[:, 0], tour_idx_g[:, 1]]
 
     # total_util = torch.zeros(tour_idx_g.shape[0], device=device)
-    total_util = torch.zeros(1)
+    total_util = torch.zeros(1, device=device)
     for i in range(tour_idx_g.shape[0]):
         # Calculate the distance from each origin square to every other square covered by the line.
         distance = torch.cdist(tour_idx_g[i][None, :].float(), tour_idx_g.float(), p=p).squeeze()
