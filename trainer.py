@@ -13,6 +13,7 @@ from critic import StateCritic
 import constants
 from reward import od_utility, discounted_development_utility
 import matplotlib.pyplot as plt
+from mlflow import log_metric, log_artifact, log_param
 
 device = constants.device
 
@@ -91,6 +92,7 @@ class Trainer(object):
 
         train_start = time.time()
         print(f'Starts training on {device} - Model location is {save_dir}')
+        log_param('save_dir', save_dir)
 
         checkpoint_dir = save_dir / 'checkpoints'
         if not os.path.exists(checkpoint_dir):
@@ -167,6 +169,12 @@ class Trainer(object):
             print('epoch %d, average_reward: %2.3f, actor_loss: %2.4f,  critic_loss: %2.4f, cost_time: %2.4fs'
                 % (epoch, avg_reward.item(), actor_loss.item(), critic_loss.item(), cost_time))
 
+            log_metric('average_reward', avg_reward.item())
+            log_metric('actor_loss', actor_loss.item())
+            log_metric('critic_loss', critic_loss.item())
+            log_metric('average_od', average_od)
+            log_metric('average_ac', average_Ac)
+
             torch.cuda.empty_cache()  # reduce memory
 
             # Save the weights of an epoch
@@ -201,8 +209,10 @@ class Trainer(object):
         plt.ylabel('Reward')
         plt.legend(loc='best')
         plt.savefig(save_dir / 'loss.png', dpi=800)
+        log_artifact(save_dir / 'loss.png')
 
         print(f'Finished training in {(time.time() - train_start)/60} minutes.')
+        log_metric('training_time', (time.time() - train_start)/60)
 
     def evaluate(self, args):
         assert args.result_path, 'args.checkpoint folder needs to be given to evalute a model'
@@ -235,6 +245,7 @@ class Trainer(object):
         ax.imshow(plot_grid)
         fig.suptitle(f'{args.environment} - Average Generated line \n from {args.result_path}')
         fig.savefig(Path(args.result_path, 'average_generated_line.png'))
+        # log_artifact(Path(args.result_path, 'average_generated_line.png'))
 
         # Evaluate OD metrics
         satisfied_ods = np.zeros(len(gen_lines))
@@ -265,3 +276,4 @@ class Trainer(object):
         axs[1].title.set_text(f'Mean Satisfied OD % by group \n Total OD: {mean_sat_od_pct} - Total group OD: {sum(mean_sat_od_by_group)/total_group_od}  \n Model: {args.result_path}')
 
         fig.savefig(Path(args.result_path, 'satisfied_od_by_group.png'))
+        # log_artifact(Path(args.result_path, 'satisfied_od_by_group.png'))

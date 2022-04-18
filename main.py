@@ -4,6 +4,7 @@ from constraints import ForwardConstraints
 from environment import Environment
 from trainer import Trainer
 from pathlib import Path
+from mlflow import log_metric, log_param, log_artifacts
 
 # torch.manual_seed(0)
 
@@ -40,6 +41,10 @@ if __name__ == "__main__":
     environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file)
     constraints = ForwardConstraints(environment.grid_x_size, environment.grid_y_size, environment.existing_lines_full, environment.grid_to_vector)
     trainer = Trainer(environment, constraints, args)
+
+    # Log parameters on mlflow
+    for arg, value in vars(args).items():
+        log_param(arg, value)
 
     if not args.test:
         trainer.train(args)

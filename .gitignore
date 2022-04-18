@@ -114,3 +114,4 @@ dmypy.json
 .pyre/
 .vscode/launch.json
 result/*
+/mlruns/*
