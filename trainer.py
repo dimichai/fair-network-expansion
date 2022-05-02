@@ -11,7 +11,7 @@ from actor import DRL4Metro
 from constraints import Constraints
 from critic import StateCritic
 import constants
-from reward import od_utility, discounted_development_utility
+from reward import group_utility, od_utility, discounted_development_utility
 import matplotlib.pyplot as plt
 from mlflow import log_metric, log_artifact, log_param
 
@@ -130,6 +130,8 @@ class Trainer(object):
                     if args.ses_weight > 0:
                         ses_reward = discounted_development_utility(tour_idx, self.environment)
                         reward = args.ses_weight * ses_reward + (1-args.ses_weight) * reward
+                elif args.reward == 'group':
+                    reward = group_utility(tour_idx, self.environment, args.var_lambda)
 
                 social_equity_list.append(ses_reward.item())
 
