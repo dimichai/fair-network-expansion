@@ -263,7 +263,7 @@ class Trainer(object):
         mean_sat_od = satisfied_ods.mean()
         mean_sat_od_pct = mean_sat_od / (self.environment.od_mx.sum() / 2)
         mean_sat_od_by_group = satisfied_group_ods.mean(axis=0)
-        mean_sat_od_by_group_pct = mean_sat_od_by_group / [g.sum()/2 for g in self.environment.group_od_mx]
+        mean_sat_od_by_group_pct = mean_sat_od_by_group / [g.cpu().sum()/2 for g in self.environment.group_od_mx]
         total_group_od = sum([g.sum()/2 for g in self.environment.group_od_mx])
         # print average satisfied flows and the satisfied share
         # total od matrix sum is divided by 2 because it is symmetrical.
