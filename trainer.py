@@ -1,5 +1,6 @@
 import csv
 import datetime
+import json
 from environment import Environment
 import os
 from pathlib import Path
@@ -14,6 +15,7 @@ import constants
 from reward import group_utility, od_utility, discounted_development_utility
 import matplotlib.pyplot as plt
 from mlflow import log_metric, log_artifact, log_param
+from utils import gini
 
 device = constants.device
 
@@ -279,3 +281,21 @@ class Trainer(object):
 
         fig.savefig(Path(args.result_path, 'satisfied_od_by_group.png'))
         # log_artifact(Path(args.result_path, 'satisfied_od_by_group.png'))
+
+        group_gini = gini(mean_sat_od_by_group)
+        group_pct_gini = gini(mean_sat_od_by_group_pct)
+
+        # Create .json file with all result metrics.
+        result_metrics = {
+            'mean_sat_od': mean_sat_od,
+            'mean_sat_od_pct': mean_sat_od_pct.item(),
+            'mean_sat_od_by_group': mean_sat_od_by_group.tolist(),
+            'mean_sat_od_by_group_pct': mean_sat_od_by_group_pct.tolist(),
+            'mean_sat_group_od': sum(mean_sat_od_by_group).item(),
+            'mean_sat_group_od_pct': (sum(mean_sat_od_by_group)/total_group_od).item(),
+            'group_gini': group_gini,
+            'group_pct_gini': group_pct_gini
+        }
+        
+        with open(Path(args.result_path, 'result_metrics.json'), 'w') as outfile:
+            json.dump(result_metrics, outfile)
