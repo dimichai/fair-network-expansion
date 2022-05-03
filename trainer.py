@@ -134,6 +134,8 @@ class Trainer(object):
                         reward = args.ses_weight * ses_reward + (1-args.ses_weight) * reward
                 elif args.reward == 'group':
                     reward = group_utility(tour_idx, self.environment, args.var_lambda)
+                elif args.reward == 'ai_economist':
+                    reward = group_utility(tour_idx, self.environment, mult_gini=True)
 
                 social_equity_list.append(ses_reward.item())
 
@@ -250,6 +252,9 @@ class Trainer(object):
         fig.suptitle(f'{args.environment} - Average Generated line \n from {args.result_path}')
         fig.savefig(Path(args.result_path, 'average_generated_line.png'))
         # log_artifact(Path(args.result_path, 'average_generated_line.png'))
+        # create a list of pairs of indices for the average generated line, to save in the results.
+        nz = plot_grid.nonzero()
+        avg_gen_line = np.stack((nz[0], nz[1]), axis=-1)
 
         # Evaluate OD metrics
         satisfied_ods = np.zeros(len(gen_lines))
@@ -287,6 +292,7 @@ class Trainer(object):
 
         # Create .json file with all result metrics.
         result_metrics = {
+            'avg_generated_line': avg_gen_line.tolist(),
             'mean_sat_od': mean_sat_od,
             'mean_sat_od_pct': mean_sat_od_pct.item(),
             'mean_sat_od_by_group': mean_sat_od_by_group.tolist(),
