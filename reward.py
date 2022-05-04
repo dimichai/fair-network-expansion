@@ -1,4 +1,5 @@
 from os import environ
+from re import L
 from environment import Environment
 import torch
 from utils import gini_tensor, gini
@@ -34,6 +35,7 @@ def group_utility(tour_idx: torch.Tensor, environment: Environment, var_lambda=0
     Returns:
         torch.Tensor: total reward.
     """
+    # TODO SOS CHANGE TO group_od_pct
     assert environment.group_od_mx, 'Cannot use group_utility reward without group definitions. Provide --groups_file argument'
 
     sat_od_mask = environment.satisfied_od_mask(tour_idx)
@@ -43,7 +45,10 @@ def group_utility(tour_idx: torch.Tensor, environment: Environment, var_lambda=0
         sat_group_ods[i] = (g_od * sat_od_mask).sum().item()
 
     if mult_gini:
-        return sat_group_ods.sum() * (1 - gini(sat_group_ods.detach().cpu().numpy()))
+        rw = sat_group_ods.sum() * (1 - gini(sat_group_ods.detach().cpu().numpy()))
+        if torch.isnan(rw):
+            return 0
+        return rw
     else:
         return sat_group_ods.sum() - var_lambda * sat_group_ods.var()
 
