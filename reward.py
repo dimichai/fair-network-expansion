@@ -21,7 +21,7 @@ def od_utility(tour_idx: torch.Tensor, environment: Environment):
     
     return reward
 
-def group_utility(tour_idx: torch.Tensor, environment: Environment, var_lambda=0, mult_gini=False):
+def group_utility(tour_idx: torch.Tensor, environment: Environment, var_lambda=0, use_pct=True, mult_gini=False):
     """Sums total satisfied Origin Destination flows of all groups 
     (equal to od_utility in cases where every square with a group also has OD flows), 
     and subtracts a lambda of the variance (to achieve minimization of differences fairness.)
@@ -30,27 +30,34 @@ def group_utility(tour_idx: torch.Tensor, environment: Environment, var_lambda=0
         tour_idx (torch.Tensor): the generated line.
         environment (Environment): the environment where the line is generated.
         var_lambda (int, optional): variance weight parameter to subtract from the sum. Defaults to 0.
+        use_pct (boolean, optional): if True, reward will be calculated using percentage of satisfied OD per group. If false, it will use absolute values. Defaults to True.
         mult_gini (boolean, optional): if True, it will multiply the group utility by 1-gini_index(group utility), as they do on the AI economist paper.
 
     Returns:
         torch.Tensor: total reward.
     """
-    # TODO SOS CHANGE TO group_od_pct
     assert environment.group_od_mx, 'Cannot use group_utility reward without group definitions. Provide --groups_file argument'
 
     sat_od_mask = environment.satisfied_od_mask(tour_idx)
 
     sat_group_ods = torch.zeros(len(environment.group_od_mx), device=device)
+    sat_group_ods_pct = torch.zeros(len(environment.group_od_mx), device=device)
     for i, g_od in enumerate(environment.group_od_mx):
         sat_group_ods[i] = (g_od * sat_od_mask).sum().item()
+        sat_group_ods_pct[i] = sat_group_ods[i] / g_od.sum()
+
+    if use_pct:
+        group_rw = sat_group_ods_pct
+    else:
+        group_rw = sat_group_ods
 
     if mult_gini:
-        rw = sat_group_ods.sum() * (1 - gini(sat_group_ods.detach().cpu().numpy()))
+        rw = group_rw.sum() * (1 - gini(group_rw.detach().cpu().numpy()))
         if torch.isnan(rw):
             return 0
         return rw
     else:
-        return sat_group_ods.sum() - var_lambda * sat_group_ods.var()
+        return group_rw.sum() - var_lambda * group_rw.var()
 
 
 def discounted_development_utility(tour_idx: torch.Tensor, environment: Environment, p=2.0):
