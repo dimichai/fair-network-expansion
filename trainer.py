@@ -86,8 +86,8 @@ class Trainer(object):
             args (argparse.Namespace): parsed console arguments.
         """
         if args.checkpoint:
-            self.actor.load_state_dict(torch.load(args.checkpoint / 'actor.pt', device))
-            self.critic.load_state_dict(torch.load(args.checkpoint / 'critic.pt', device))
+            self.actor.load_state_dict(torch.load(Path(args.checkpoint, 'actor.pt'), device))
+            self.critic.load_state_dict(torch.load(Path(args.checkpoint, 'critic.pt'), device))
 
         now = datetime.datetime.today().strftime('%Y%m%d_%H_%M_%S.%f')
         save_dir = Path('./result') / f'{args.environment}_{now}'
