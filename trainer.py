@@ -12,7 +12,7 @@ from actor import DRL4Metro
 from constraints import Constraints
 from critic import StateCritic
 import constants
-from reward import group_utility, od_utility, discounted_development_utility
+from reward import group_utility, od_utility, discounted_development_utility, lowest_quintile_utility
 import matplotlib.pyplot as plt
 from mlflow import log_metric, log_artifact, log_param
 from utils import gini
@@ -136,6 +136,8 @@ class Trainer(object):
                     reward = group_utility(tour_idx, self.environment, args.var_lambda)
                 elif args.reward == 'ai_economist':
                     reward = group_utility(tour_idx, self.environment, mult_gini=True)
+                elif args.reward == 'rawls':
+                    reward = lowest_quintile_utility(tour_idx, self.environment)
 
                 social_equity_list.append(ses_reward.item())
 

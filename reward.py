@@ -59,6 +59,26 @@ def group_utility(tour_idx: torch.Tensor, environment: Environment, var_lambda=0
     else:
         return group_rw.sum() - var_lambda * group_rw.var()
 
+def lowest_quintile_utility(tour_idx: torch.Tensor, environment: Environment, use_pct=True):
+    """Based on Rawl's theory of justice - returns the satisfied OD (or % depending on use_pct) of the lowest quintile.
+
+    Args:
+        tour_idx (torch.Tensor): the generated line.
+        environment (Environment): the environment where the line is generated.
+        use_pct (boolean, optional): if True, reward will be calculated using percentage of satisfied OD per group. If false, it will use absolute values. Defaults to True.
+    Returns:
+        torch.Tensor: total reward.
+    """
+    assert environment.group_od_mx, 'Cannot use group_utility reward without group definitions. Provide --groups_file argument'
+
+    sat_od_mask = environment.satisfied_od_mask(tour_idx)
+
+    sat_od = (environment.group_od_mx[0] * sat_od_mask).sum().item()
+    if use_pct:
+        return sat_od / environment.group_od_mx[0].sum()
+    else:
+        return sat_od
+
 
 def discounted_development_utility(tour_idx: torch.Tensor, environment: Environment, p=2.0):
     """Total sum of utility as defined by City Metro Network Expansion with Reinforcement Learning paper.
