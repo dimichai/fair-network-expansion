@@ -55,13 +55,13 @@ def mscatter(x,y,ax=None, m=None, **kw):
             paths.append(path)
         sc.set_paths(paths)
 
-metrics_plot = metrics.drop_duplicates(['group_ods_pct', 'group_gini'])
+metrics_plot = metrics.drop_duplicates(['mean_sat_group_od_pct', 'group_gini'])
 fig, ax = plt.subplots(figsize=(7, 7))
 s = np.repeat(200, metrics_plot.shape[0])
 m = ['o','^', 's']
 c = ['y', '#FF99CC', '#FF0000']
 
-scatter = mscatter(metrics_plot['group_ods_pct'], metrics_plot['group_pct_diff'], c=c, s=s, m=m, ax=ax)
+scatter = mscatter(metrics_plot['mean_sat_group_od_pct'], metrics_plot['group_pct_diff'], c=c, s=s, m=m, ax=ax)
 ax.set_xlabel('% of total satisfied OD flows', fontsize=18)
 ax.set_ylabel('Equity of benefits (1-difference)', fontsize=18)
 fig.suptitle('Utility vs Equity - Dilemma Environment')
@@ -123,8 +123,8 @@ plt.figure(figsize=(10,7))
 width = 0.3       
 
 # Plotting
-plt.bar(ind, groups_1 , width, label='Utility Maximisation', color="#D0DFFC")
-plt.bar(ind + width, groups_2, width, label='Equity Maximisation', color="#ff6361")
+plt.bar(ind, groups_1 , width, label='Maximize OD', color="#71a3f7")
+plt.bar(ind + width, groups_2, width, label='GGI', color="#ff6361", hatch='///')
 
 plt.xlabel('House Price Quintiles')
 plt.ylabel('% of total satisfied OD flows')
