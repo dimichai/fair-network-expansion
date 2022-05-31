@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 #%%
 ams_nb = gpd.read_file('./ams-districts.geojson')
 # ams_nb = gpd.read_file('./ams-neighbourhoods.geojson')
-# For population data by buurt/wijk
+# For population/income data by buurt/wijk
 ams_ses = pd.read_csv('./ams-ds-ses.csv')
-ams_ses = ams_ses[['WK_CODE', 'pop']]
+ams_ses = ams_ses[['WK_CODE', 'pop', 'avg_inc_per_res']]
 
 # ams_nb = ams_nb.to_crs(epsg=3035)
 # %%
@@ -100,6 +100,10 @@ overlay_pct = overlay_pct.reset_index().merge(ams_ses, on='WK_CODE', how='left')
 overlay_pct['grid_pop'] = overlay_pct['area_overlay_pct'] * overlay_pct['pop']
 overlay_pct['grid_pop'] = overlay_pct['grid_pop'].round()
 gridpop = overlay_pct.groupby('v')[['grid_pop']].sum().reset_index()
+
+# some tests for avg income
+# wm = lambda x: np.average(x, weights=overlay_pct.loc[overlay_pct.index, 'grid_pop'], axis=0)
+# overlay_pct.groupby('v').agg(grid_pop=('grid_pop', 'sum'), avg_income=('avg_inc_per_res', wm))
 
 # Merge gridpop with the original grid
 grid = grid.merge(gridpop, on='v', how='left')
