@@ -101,23 +101,34 @@ overlay_pct['grid_pop'] = overlay_pct['area_overlay_pct'] * overlay_pct['pop']
 overlay_pct['grid_pop'] = overlay_pct['grid_pop'].round()
 gridpop = overlay_pct.groupby('v')[['grid_pop']].sum().reset_index()
 
-# some tests for avg income
-# wm = lambda x: np.average(x, weights=overlay_pct.loc[overlay_pct.index, 'grid_pop'], axis=0)
-# overlay_pct.groupby('v').agg(grid_pop=('grid_pop', 'sum'), avg_income=('avg_inc_per_res', wm))
+# Assign average income to each grid.
+# https://stackoverflow.com/questions/31521027/groupby-weighted-average-and-sum-in-pandas-dataframe
+def weighted_average(df, data_col, weight_col, by_col):
+    df['_data_times_weight'] = df[data_col] * df[weight_col]
+    df['_weight_where_notnull'] = df[weight_col] * pd.notnull(df[data_col])
+    g = df.groupby(by_col)
+    result = g['_data_times_weight'].sum() / g['_weight_where_notnull'].sum()
+    del df['_data_times_weight'], df['_weight_where_notnull']
+    return result
+
+gridinc = weighted_average(overlay_pct, 'avg_inc_per_res', 'area_overlay_pct', 'v').to_frame('grid_avg_inc')
 
 # Merge gridpop with the original grid
 grid = grid.merge(gridpop, on='v', how='left')
-grid['grid_pop'] = grid['grid_pop'].fillna(0)
+grid = grid.merge(gridinc, on='v', how='left')
+# grid['grid_pop'] = grid['grid_pop'].fillna(0)
 grid.to_csv('./amsterdam_grid.csv', index=False)
 
 #%% Plot the Grid environment and the existing lines.
-fig, ax = plt.subplots(figsize=(15, 10))
 gridenv = np.zeros((grid_x_size, grid_y_size))
 for i, row in grid.iterrows():
     gridenv[row['g_x'], row['g_y']] = row['grid_pop']
-# gridenv = np.random.rand(grid_x_size, grid_y_size)
-        # gridenv[row['g_x'], row['g_y']] = int(metro_labels[i])
 
+gridenvinc = np.zeros((grid_x_size, grid_y_size))
+for i, row in grid.iterrows():
+    gridenvinc[row['g_x'], row['g_y']] = row['grid_avg_inc']
+
+fig, ax = plt.subplots(figsize=(15, 10))
 ax.imshow(gridenv, cmap='Blues')
 markers = itertools.cycle(['o','s','v', '^', 'P', 'h'])
 for i, l in enumerate(metro_lines):
@@ -126,6 +137,19 @@ for i, l in enumerate(metro_lines):
 
     ax.plot(l_v['g_y'], l_v['g_x'], 'o', marker=next(markers), label=metro_labels[i], markersize=10, alpha=0.5)
 
+fig.suptitle('Amsterdam Grid Population - Existing Lines', fontsize=30)
+ax.legend()
+
+fig, ax = plt.subplots(figsize=(15, 10))
+ax.imshow(gridenvinc)
+markers = itertools.cycle(['o','s','v', '^', 'P', 'h'])
+for i, l in enumerate(metro_lines):
+    l_v = l.sjoin(grid)
+    l_v = l_v.sort_values('v')
+
+    ax.plot(l_v['g_y'], l_v['g_x'], 'o', marker=next(markers), label=metro_labels[i], markersize=10, alpha=0.5)
+
+fig.suptitle('Amsterdam Grid Avg Income - Existing Lines', fontsize=30)
 ax.legend()
 
 
