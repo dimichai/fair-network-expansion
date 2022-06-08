@@ -213,4 +213,136 @@ corr = grid[['grid_pop', 'aggregate_od']].corr().iloc[0, 1]
 grid.plot.scatter('grid_pop', 'aggregate_od', ax=ax)
 fig.suptitle(f'Aggregate OD flows vs Population: Pearson: {round(corr, 3)}')
 fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_agg_od_vs_pop.png')
+
+# %% Experiment - Can we correlate aggregate OD with total Checkins/Checkouts?
+gvb = pd.read_csv('./gvb_data/check_ins_outs_2019.csv')
+
+gvb.loc[gvb['stop_name'] == 'Atat?rk', 'stop_name'] = 'Atatürk'
+gvb.loc[gvb['stop_name'] == 'Burg. R?ellstraat', 'stop_name'] = 'Burg. Röellstraat'
+gvb.loc[gvb['stop_name'] == 'Lumi?restraat', 'stop_name'] = 'Lumierestraat'
+gvb.loc[gvb['stop_name'] == 'VU medisch centrum', 'stop_name'] = 'VUmc'
+gvb.loc[gvb['stop_name'] == 'Fred. Hendrikplants.', 'stop_name'] = 'F. Hendrikplantsoen'
+gvb.loc[gvb['stop_name'] == 'Pr. Irenestraat', 'stop_name'] = 'Prinses Irenestraat'
+gvb.loc[gvb['stop_name'] == 'Middenhoven / Brink', 'stop_name'] = 'Brink'
+gvb.loc[gvb['stop_name'] == 'Nw.Willemsstraat', 'stop_name'] = 'Nw. Willemsstraat'
+gvb.loc[gvb['stop_name'] == 'Anth. Moddermanstraat', 'stop_name'] = 'Ant. Moddermanstraat'
+gvb.loc[gvb['stop_name'] == "Haarl'meerstation", 'stop_name'] = 'Haarlemmermeerstation'
+gvb.loc[gvb['stop_name'] == 'Diemen (Sniep)', 'stop_name'] = 'Diemen Sniep'
+gvb.loc[gvb['stop_name'] == 'Ferd. Bolstraat', 'stop_name'] = 'Ferdinand Bolstraat'
+gvb.loc[gvb['stop_name'] == 'V. M. Broeckmanstraat', 'stop_name'] = 'V. M. Broekmanstraat'
+
+# total checkins/outs per stop
+gvb = gvb.groupby('stop_name')[['check_ins', 'check_outs']].sum().reset_index()
+gvb = gvb[gvb['stop_name'] != '[[ Onbekend ]]']
+gvb = gvb[gvb['stop_name'] != 'OVan rig']
+# 1e is Eerste on the PUNTEN dataset
+# gvb['stop_name'] = gvb['stop_name'].str.replace('1e', 'Eerste', regex=False)
+# gvb['stop_name'] = gvb['stop_name'].str.replace('2e', 'Tweede', regex=False)
+# gvb['stop_name'] = gvb['stop_name'].str.replace('v.d.', 'Van der ', regex=False)
+# gvb['stop_name'] = gvb['stop_name'].str.replace('v.', 'Van ', regex=False)
+# gvb['stop_name'] = gvb['stop_name'].str.replace('Con.', 'Constantijn', regex=False)
+gvb.loc[:, 'stop_name_lower'] = gvb['stop_name'].str.lower()
+gvb.loc[:, 'check_ins_outs'] = gvb['check_ins'] + gvb['check_outs']
+
+# pt_stops = pd.read_csv('./TRAMMETRO_PUNTEN_2020.csv', delimiter=';')
+# pt_stops = pt_stops[['Naam', 'LNG', 'LAT']]
+# pt_stops['Naam_lower'] = pt_stops['Naam'].str.lower()
+
+pt_stops = pd.read_csv('./ams_network_stops_osm.csv', delimiter=',')
+
+pt_stops = pt_stops[pt_stops['unique_agency_id'] == 'gvb']
+pt_stops = pt_stops.groupby('stop_name').mean().reset_index()
+pt_stops = pt_stops[['stop_name', 'x', 'y']]
+pt_stops[['gemeente', 'stop_name']] = pt_stops['stop_name'].str.split(', ', 1, expand=True)
+pt_stops.loc[np.isin(pt_stops['stop_name'],
+        ['Osdorpplein Noord', 'Osdorpplein Oost', 'Osdorpplein West']), 'stop_name'] = 'Osdorpplein'
+pt_stops.loc[pt_stops['stop_name'] == 'Gelderlandplein O', 'stop_name'] = 'Gelderlandplein Oost'
+pt_stops.loc[:, 'stop_name_lower'] = pt_stops['stop_name'].str.lower()
+
+
+gvb_geo = gvb.merge(pt_stops, on='stop_name_lower').drop(['stop_name_lower', 'stop_name_y'], axis=1)
+gvb_geo = gvb_geo.rename(columns={'stop_name_x': 'stop_name'})
+gvb_geo = gpd.GeoDataFrame(
+            gvb_geo, 
+            geometry=gpd.points_from_xy(gvb_geo['x'], gvb_geo['y']),
+            crs='EPSG:4326')
+gvb_geo = gvb_geo.to_crs(CRS)
+gvb_geo = gvb_geo.sjoin(grid)
+
+gvb_stats = gvb_geo.groupby(['v', 'g_x', 'g_y'])[['aggregate_od', 'check_ins', 'check_outs', 'check_ins_outs']].sum().reset_index()
+
+# Exclude centraal cell - outlier
+# TODO SOS: don't have a hard-coded cell here
+gvb_stats = gvb_stats[gvb_stats['v'] != 587]
+gvb_stats['check_ins_outs_norm'] = gvb_stats['check_ins_outs'] / gvb_stats['check_ins_outs'].max()
+gvb_stats['aggregate_od_norm'] = gvb_stats['aggregate_od'] / gvb_stats['aggregate_od'].max()
+
+fig, ax = plt.subplots(figsize=(10, 5))
+gvb_stats['check_ins_outs_norm'].hist(ax=ax, alpha=0.5, label='Checkins + Checkouts (normalized)')
+gvb_stats['aggregate_od_norm'].hist(ax=ax, alpha=0.5, label='Estimated OD Flows (normalized)')
+ax.legend(loc='best')
+ax.grid(False)
+fig.suptitle(f'Distribution of OV Checkins + Checkouts & Estimated OD Flows')
+fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_flow_distribution.png')
+
+fig, ax = plt.subplots(figsize=(7, 5))
+corr = gvb_stats[['check_ins_outs_norm', 'aggregate_od_norm']].corr().iloc[0, 1]
+gvb_stats.plot.scatter('check_ins_outs_norm', 'aggregate_od_norm', ax=ax)
+fig.suptitle(f'Total Checkins + Checkouts vs Aggregate OD flows: Pearson: {round(corr, 3)}')
+fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_checkins_vs_od_flows.png')
+
+# %%
+fig, axs = plt.subplots(1, 2, figsize=(15, 10))
+g_checkins = np.zeros((grid_x_size, grid_y_size))
+g_estimated_ods = np.zeros((grid_x_size, grid_y_size))
+for i, row in gvb_geo.iterrows():
+    g_checkins[row['g_x'], row['g_y']] = row['check_ins_outs_norm']
+    g_estimated_ods[row['g_x'], row['g_y']] = row['aggregate_od_norm']
+
+im0 = axs[0].imshow(g_checkins, label='asd')
+axs[0].set_title('GVB | Checkins + Checkouts (normalized)')
+axs[1].imshow(g_estimated_ods)
+axs[1].set_title('Estimation | Aggregate Flow (normalized)')
+cax = fig.add_axes([0.25, 0.25, 0.5, 0.02])
+cbar = fig.colorbar(im0, cax=cax, orientation='horizontal', label=f'Note: only contains the {round(gvb_geo.shape[0]/gvb.shape[0] * 100, 1)}% cells where a match was found between GVB and tram stops datasets')
+fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_gvb_vs_estimate.png')
+# %%
+
+# gvb = pd.read_csv('./gvb_data/check_ins_outs_2019.csv')
+
+# gvb.loc[gvb['stop_name'] == 'Atat?rk', 'stop_name'] = 'Atatürk'
+# gvb.loc[gvb['stop_name'] == 'Burg. R?ellstraat', 'stop_name'] = 'Burg. Röellstraat'
+# gvb.loc[gvb['stop_name'] == 'Lumi?restraat', 'stop_name'] = 'Lumierestraat'
+# gvb.loc[gvb['stop_name'] == 'VU medisch centrum', 'stop_name'] = 'VUmc'
+# gvb.loc[gvb['stop_name'] == 'Fred. Hendrikplants.', 'stop_name'] = 'F. Hendrikplantsoen'
+# gvb.loc[gvb['stop_name'] == 'Pr. Irenestraat', 'stop_name'] = 'Prinses Irenestraat'
+# gvb.loc[gvb['stop_name'] == 'Middenhoven / Brink', 'stop_name'] = 'Brink'
+# gvb.loc[gvb['stop_name'] == 'Nw.Willemsstraat', 'stop_name'] = 'Nw. Willemsstraat'
+# gvb.loc[gvb['stop_name'] == 'Anth. Moddermanstraat', 'stop_name'] = 'Ant. Moddermanstraat'
+# gvb.loc[gvb['stop_name'] == "Haarl'meerstation", 'stop_name'] = 'Haarlemmermeerstation'
+# gvb.loc[gvb['stop_name'] == 'Diemen (Sniep)', 'stop_name'] = 'Diemen Sniep'
+# gvb.loc[gvb['stop_name'] == 'Ferd. Bolstraat', 'stop_name'] = 'Ferdinand Bolstraat'
+# gvb.loc[gvb['stop_name'] == 'V. M. Broeckmanstraat', 'stop_name'] = 'V. M. Broekmanstraat'
+
+# # total checkins/outs per stop
+# gvb = gvb.groupby('stop_name')[['check_ins', 'check_outs']].sum().reset_index()
+# gvb.loc[:, 'stop_name_lower'] = gvb['stop_name'].str.lower()
+
+# pt_stops = pd.read_csv('./ams_network_stops_osm.csv', delimiter=',')
+
+# pt_stops = pt_stops[pt_stops['unique_agency_id'] == 'gvb']
+# pt_stops = pt_stops.groupby('stop_name').mean().reset_index()
+# pt_stops = pt_stops[['stop_name', 'x', 'y']]
+# pt_stops[['gemeente', 'stop_name']] = pt_stops['stop_name'].str.split(', ', 1, expand=True)
+# pt_stops.loc[np.isin(pt_stops['stop_name'],
+#         ['Osdorpplein Noord', 'Osdorpplein Oost', 'Osdorpplein West']), 'stop_name'] = 'Osdorpplein'
+# pt_stops.loc[pt_stops['stop_name'] == 'Gelderlandplein O', 'stop_name'] = 'Gelderlandplein Oost'
+# pt_stops.loc[:, 'stop_name_lower'] = pt_stops['stop_name'].str.lower()
+
+# pt_stops = pt_stops.sort_values('stop_name')
+# gvb = gvb.sort_values('stop_name')
+# # gvb.merge(pt_stops_2, on='stop_name').head()
+
+# gvb_ = gvb.merge(pt_stops, on='stop_name_lower', how='left')
+# gvb_[pd.isna(gvb_['x'])].sort_values('check_ins', ascending=False)
 # %%
