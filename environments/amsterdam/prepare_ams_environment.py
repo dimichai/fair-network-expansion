@@ -119,6 +119,7 @@ gridinc = weighted_average(overlay_pct, 'avg_inc_per_res', 'area_overlay_pct', '
 
 # Merge gridpop with the original grid
 grid = grid.merge(gridpop, on='v', how='left')
+grid.loc[pd.isna(grid['grid_pop']), 'grid_pop'] = 0
 grid = grid.merge(gridinc, on='v', how='left')
 # Population Density per square
 grid['pop_density_km'] = grid['grid_pop'] / grid['area_grid_km']
@@ -134,8 +135,9 @@ gridenvinc = np.zeros((grid_x_size, grid_y_size))
 for i, row in grid.iterrows():
     gridenvinc[row['g_x'], row['g_y']] = row['grid_avg_inc']
 
+#%%
 fig, ax = plt.subplots(figsize=(15, 10))
-ax.imshow(gridenv, cmap='Blues')
+im = ax.imshow(gridenv, cmap='Blues')
 markers = itertools.cycle(['o','s','v', '^', 'P', 'h'])
 for i, l in enumerate(metro_lines):
     l_v = l.sjoin(grid)
@@ -144,11 +146,13 @@ for i, l in enumerate(metro_lines):
     ax.plot(l_v['g_y'], l_v['g_x'], 'o', marker=next(markers), label=metro_labels[i], markersize=10, alpha=0.5)
 
 fig.suptitle('Amsterdam Grid Population - Existing Lines', fontsize=30)
+fig.colorbar(im, orientation='vertical')
 ax.legend()
+
 fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_population.png')
 
 fig, ax = plt.subplots(figsize=(15, 10))
-ax.imshow(gridenvinc, cmap='Blues')
+im = ax.imshow(gridenvinc, cmap='Blues')
 markers = itertools.cycle(['o','s','v', '^', 'P', 'h'])
 for i, l in enumerate(metro_lines):
     l_v = l.sjoin(grid)
@@ -157,6 +161,7 @@ for i, l in enumerate(metro_lines):
     ax.plot(l_v['g_y'], l_v['g_x'], 'o', marker=next(markers), label=metro_labels[i], markersize=10, alpha=0.5)
 
 fig.suptitle('Amsterdam Grid Avg Income - Existing Lines', fontsize=30)
+fig.colorbar(im, orientation='vertical')
 ax.legend()
 fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_avg_income.png')
 
@@ -179,6 +184,9 @@ for i,row_i in grid.iterrows():
         if i == j:
             continue
         
+        if row_i['grid_pop'] == 0:
+            continue
+
         # destination attractiveness
         mu_j = row_j['pop_density_km'] * row_j['area_grid_km'] ** 2 * fmax
         
@@ -193,22 +201,36 @@ for i,row_i in grid.iterrows():
         od_ij = mu_j * row_i['area_grid_km'] / r_ij ** 2 * np.log(fmax/fmin)
         od_mx[i, j] = od_ij
 
+# The above code calculates avg visits/day
+od_mx = od_mx * d
 
 # %% Plot aggregate OD flow for each grid cell
-agg_od_g = np.zeros((grid_x_size, grid_y_size))
-agg_od_v = od_mx.sum(axis=1)
+agg_out_od_g = np.zeros((grid_x_size, grid_y_size))
+agg_in_od_g = np.zeros((grid_x_size, grid_y_size))
+agg_out_od_v = od_mx.sum(axis=1)
+agg_in_od_v = od_mx.sum(axis=0)
 # Get the grid indices.
-for i in range(agg_od_v.shape[0]):
-    agg_od_g[grid.iloc[i]['g_x'], grid.iloc[i]['g_y']] = agg_od_v[i]
+for i in range(agg_out_od_v.shape[0]):
+    agg_out_od_g[grid.iloc[i]['g_x'], grid.iloc[i]['g_y']] = agg_out_od_v[i]
+    agg_in_od_g[grid.iloc[i]['g_x'], grid.iloc[i]['g_y']] = agg_in_od_v[i]
 
 fig, ax = plt.subplots(figsize=(15, 10))
-ax.imshow(agg_od_g, cmap='Blues')
-fig.suptitle('Amsterdam Agregate OD flows', fontsize=30)
-fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_agg_od_flows.png')
+im = ax.imshow(agg_out_od_g, cmap='Blues')
+fig.suptitle('Amsterdam Agregate Outgoing OD flows', fontsize=30)
+fig.colorbar(im, orientation='vertical')
+fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_agg_out_od_flows.png')
+
+fig, ax = plt.subplots(figsize=(15, 10))
+im = ax.imshow(agg_in_od_g, cmap='Blues')
+fig.suptitle('Amsterdam Agregate Incoming OD flows', fontsize=30)
+fig.colorbar(im, orientation='vertical')
+fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_agg_in_od_flows.png')
 
 # %% Plot correlation between population and aggregate d
 fig, ax = plt.subplots(figsize=(7, 5))
-grid['aggregate_od'] = agg_od_v
+grid['aggregate_out_od'] = agg_out_od_v
+grid['aggregate_in_od'] = agg_in_od_v
+grid['aggregate_od'] = grid['aggregate_out_od'] + grid['aggregate_in_od']
 corr = grid[['grid_pop', 'aggregate_od']].corr().iloc[0, 1]
 grid.plot.scatter('grid_pop', 'aggregate_od', ax=ax)
 fig.suptitle(f'Aggregate OD flows vs Population: Pearson: {round(corr, 3)}')
@@ -235,18 +257,8 @@ gvb.loc[gvb['stop_name'] == 'V. M. Broeckmanstraat', 'stop_name'] = 'V. M. Broek
 gvb = gvb.groupby('stop_name')[['check_ins', 'check_outs']].sum().reset_index()
 gvb = gvb[gvb['stop_name'] != '[[ Onbekend ]]']
 gvb = gvb[gvb['stop_name'] != 'OVan rig']
-# 1e is Eerste on the PUNTEN dataset
-# gvb['stop_name'] = gvb['stop_name'].str.replace('1e', 'Eerste', regex=False)
-# gvb['stop_name'] = gvb['stop_name'].str.replace('2e', 'Tweede', regex=False)
-# gvb['stop_name'] = gvb['stop_name'].str.replace('v.d.', 'Van der ', regex=False)
-# gvb['stop_name'] = gvb['stop_name'].str.replace('v.', 'Van ', regex=False)
-# gvb['stop_name'] = gvb['stop_name'].str.replace('Con.', 'Constantijn', regex=False)
 gvb.loc[:, 'stop_name_lower'] = gvb['stop_name'].str.lower()
 gvb.loc[:, 'check_ins_outs'] = gvb['check_ins'] + gvb['check_outs']
-
-# pt_stops = pd.read_csv('./TRAMMETRO_PUNTEN_2020.csv', delimiter=';')
-# pt_stops = pt_stops[['Naam', 'LNG', 'LAT']]
-# pt_stops['Naam_lower'] = pt_stops['Naam'].str.lower()
 
 pt_stops = pd.read_csv('./ams_network_stops_osm.csv', delimiter=',')
 
@@ -269,13 +281,22 @@ gvb_geo = gpd.GeoDataFrame(
 gvb_geo = gvb_geo.to_crs(CRS)
 gvb_geo = gvb_geo.sjoin(grid)
 
-gvb_stats = gvb_geo.groupby(['v', 'g_x', 'g_y'])[['aggregate_od', 'check_ins', 'check_outs', 'check_ins_outs']].sum().reset_index()
+gvb_stats = gvb_geo.groupby(['v', 'g_x', 'g_y'])[['aggregate_out_od', 'aggregate_in_od', 'aggregate_od', 'check_ins', 'check_outs', 'check_ins_outs']].sum().reset_index()
 
 # Exclude centraal cell - outlier
 # TODO SOS: don't have a hard-coded cell here
 gvb_stats = gvb_stats[gvb_stats['v'] != 587]
+# Exclude station zuid
+gvb_stats = gvb_stats[gvb_stats['v'] != 1006]
+# Exclude Amstelstation
+gvb_stats = gvb_stats[gvb_stats['v'] != 776]
+
 gvb_stats['check_ins_outs_norm'] = gvb_stats['check_ins_outs'] / gvb_stats['check_ins_outs'].max()
+gvb_stats['aggregate_out_od_norm'] = gvb_stats['aggregate_out_od'] / gvb_stats['aggregate_out_od'].max()
+gvb_stats['aggregate_in_od_norm'] = gvb_stats['aggregate_in_od'] / gvb_stats['aggregate_in_od'].max()
 gvb_stats['aggregate_od_norm'] = gvb_stats['aggregate_od'] / gvb_stats['aggregate_od'].max()
+gvb_stats['check_ins_norm'] = gvb_stats['check_ins'] / gvb_stats['check_ins'].max()
+gvb_stats['check_outs_norm'] = gvb_stats['check_outs'] / gvb_stats['check_outs'].max()
 
 fig, ax = plt.subplots(figsize=(10, 5))
 gvb_stats['check_ins_outs_norm'].hist(ax=ax, alpha=0.5, label='Checkins + Checkouts (normalized)')
@@ -285,27 +306,60 @@ ax.grid(False)
 fig.suptitle(f'Distribution of OV Checkins + Checkouts & Estimated OD Flows')
 fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_flow_distribution.png')
 
-fig, ax = plt.subplots(figsize=(7, 5))
-corr = gvb_stats[['check_ins_outs_norm', 'aggregate_od_norm']].corr().iloc[0, 1]
-gvb_stats.plot.scatter('check_ins_outs_norm', 'aggregate_od_norm', ax=ax)
-fig.suptitle(f'Total Checkins + Checkouts vs Aggregate OD flows: Pearson: {round(corr, 3)}')
+#%%
+fig, axs = plt.subplots(1, 2, figsize=(10, 4))
+corr = gvb_stats[['check_ins_outs_norm', 'aggregate_out_od_norm']].corr().iloc[0, 1]
+gvb_stats.plot.scatter('check_outs_norm', 'aggregate_out_od_norm', ax=axs[0], title=f'pearson={gvb_stats[["check_outs_norm", "aggregate_out_od_norm"]].corr().iloc[0, 1].round(2)}')
+gvb_stats.plot.scatter('check_ins_norm', 'aggregate_in_od_norm', ax=axs[1], title=f'pearson={gvb_stats[["check_ins_norm", "aggregate_in_od_norm"]].corr().iloc[0, 1].round(2)}')
 fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_checkins_vs_od_flows.png')
+
+fig, ax = plt.subplots(figsize=(10, 4))
+gvb_stats.plot.scatter('check_ins_outs_norm', 'aggregate_od_norm', ax=ax, title=f'pearson={gvb_stats[["check_ins_outs_norm", "aggregate_od_norm"]].corr().iloc[0, 1].round(2)}')
+fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_total_checkins_vs_od_flows.png')
 
 # %%
 fig, axs = plt.subplots(1, 2, figsize=(15, 10))
+g_checkins_checkouts = np.zeros((grid_x_size, grid_y_size))
 g_checkins = np.zeros((grid_x_size, grid_y_size))
+g_checkouts = np.zeros((grid_x_size, grid_y_size))
 g_estimated_ods = np.zeros((grid_x_size, grid_y_size))
-for i, row in gvb_geo.iterrows():
-    g_checkins[row['g_x'], row['g_y']] = row['check_ins_outs_norm']
-    g_estimated_ods[row['g_x'], row['g_y']] = row['aggregate_od_norm']
+for i, row in gvb_stats.iterrows():
+    g_checkins[int(row['g_x']), int(row['g_y'])] = row['check_ins']
+    g_checkouts[int(row['g_x']), int(row['g_y'])] = row['check_outs']
+    g_checkins_checkouts[int(row['g_x']), int(row['g_y'])] = row['check_ins_outs_norm']
+    g_estimated_ods[int(row['g_x']), int(row['g_y'])] = row['aggregate_out_od_norm'] + row['aggregate_in_od_norm']
 
-im0 = axs[0].imshow(g_checkins, label='asd')
+im0 = axs[0].imshow(g_checkins_checkouts, label='asd')
 axs[0].set_title('GVB | Checkins + Checkouts (normalized)')
 axs[1].imshow(g_estimated_ods)
 axs[1].set_title('Estimation | Aggregate Flow (normalized)')
 cax = fig.add_axes([0.25, 0.25, 0.5, 0.02])
-cbar = fig.colorbar(im0, cax=cax, orientation='horizontal', label=f'Note: only contains the {round(gvb_geo.shape[0]/gvb.shape[0] * 100, 1)}% cells where a match was found between GVB and tram stops datasets')
+cbar = fig.colorbar(im0, cax=cax, orientation='horizontal', label=f'Note: only contains the {round(gvb_geo.shape[0]/gvb.shape[0] * 100, 1)}% cells where a match was found between GVB and OSM stops datasets')
 fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_gvb_vs_estimate.png')
+
+#%%
+fig, ax = plt.subplots(figsize=(15, 10))
+im = ax.imshow(g_checkins, cmap='Blues')
+fig.suptitle('GVB | Checkins', fontsize=30)
+ax.set_title('Excluding Centraal, Zuid and Amstelstation')
+fig.colorbar(im, orientation='vertical')
+fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_gvb_checkins.png')
+
+fig, ax = plt.subplots(figsize=(15, 10))
+im = ax.imshow(g_checkouts, cmap='Blues')
+fig.suptitle('GVB | Checkouts', fontsize=30)
+ax.set_title('Excluding Centraal, Zuid and Amstelstation')
+fig.colorbar(im, orientation='vertical')
+fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_gvb_checkouts.png')
+
+# im0 = axs[0].imshow(g_checkins, label='asd')
+# axs[0].set_title('GVB | Checkins')
+# axs[1].imshow(g_checkouts)
+# axs[1].set_title('GVB | Checkouts')
+# cax = fig.add_axes([0.25, 0.25, 0.5, 0.02])
+# cbar = fig.colorbar(im0, cax=cax, orientation='horizontal')
+# fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_gvb_vs_estimate.png')
+
 # %%
 
 # gvb = pd.read_csv('./gvb_data/check_ins_outs_2019.csv')
