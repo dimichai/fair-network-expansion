@@ -11,7 +11,7 @@ ams_nb = gpd.read_file('./ams-districts.geojson', crs='EPSG:4326')
 # ams_nb = gpd.read_file('./ams-neighbourhoods.geojson')
 # For population/income data by buurt/wijk
 ams_ses = pd.read_csv('./ams-ds-ses.csv')
-ams_ses = ams_ses[['WK_CODE', 'pop', 'avg_inc_per_res']]
+ams_ses = ams_ses[['WK_CODE', 'pop', 'avg_inc_per_res', 'house_price']]
 
 
 # Amersfoort / RD New -- Netherlands - Holland - Dutch
@@ -116,11 +116,14 @@ def weighted_average(df, data_col, weight_col, by_col):
     return result
 
 gridinc = weighted_average(overlay_pct, 'avg_inc_per_res', 'area_overlay_pct', 'v').to_frame('grid_avg_inc')
+gridhouseprice = weighted_average(overlay_pct, 'house_price', 'area_overlay_pct', 'v').to_frame('grid_house_price')
 
 # Merge gridpop with the original grid
 grid = grid.merge(gridpop, on='v', how='left')
 grid.loc[pd.isna(grid['grid_pop']), 'grid_pop'] = 0
 grid = grid.merge(gridinc, on='v', how='left')
+grid = grid.merge(gridhouseprice, on='v', how='left')
+
 # Population Density per square
 grid['pop_density_km'] = grid['grid_pop'] / grid['area_grid_km']
 # grid['grid_pop'] = grid['grid_pop'].fillna(0)
@@ -128,12 +131,13 @@ grid.to_csv('./amsterdam_grid.csv', index=False)
 
 #%% Plot the Grid environment and the existing lines.
 gridenv = np.zeros((grid_x_size, grid_y_size))
+gridenvinc = np.zeros((grid_x_size, grid_y_size))
+gridenvhp = np.zeros((grid_x_size, grid_y_size))
+
 for i, row in grid.iterrows():
     gridenv[row['g_x'], row['g_y']] = row['grid_pop']
-
-gridenvinc = np.zeros((grid_x_size, grid_y_size))
-for i, row in grid.iterrows():
     gridenvinc[row['g_x'], row['g_y']] = row['grid_avg_inc']
+    gridenvhp[row['g_x'], row['g_y']] = row['grid_house_price']
 
 #%%
 fig, ax = plt.subplots(figsize=(15, 10))
@@ -164,6 +168,13 @@ fig.suptitle('Amsterdam Grid Avg Income - Existing Lines', fontsize=30)
 fig.colorbar(im, orientation='vertical')
 ax.legend()
 fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_avg_income.png')
+
+
+fig, ax = plt.subplots(figsize=(15, 10))
+im = ax.imshow(gridenvhp, cmap='Blues')
+fig.suptitle('Amsterdam Grid Avg House Price', fontsize=30)
+fig.colorbar(im, orientation='vertical')
+fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_avg_house_price.png')
 
 # %% Print labels of the Grid
 fig, ax = plt.subplots(figsize=(15, 10))
