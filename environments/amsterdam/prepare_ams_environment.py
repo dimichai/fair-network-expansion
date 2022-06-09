@@ -204,6 +204,27 @@ for i,row_i in grid.iterrows():
 # The above code calculates avg visits/day
 od_mx = od_mx * d
 
+# Aggregate all flows between 2 locations in a symmetrical od matrix, where od[i,j] = od[j,i]
+# This is done because we are designing metro lines which are undirected.
+# And also because that's how they do it in the City Metro Network Design paper.
+od_mx_sym = np.zeros_like(od_mx)
+for i in range(od_mx.shape[0]):
+    for j in range(od_mx.shape[1]):
+        od_mx_sym[i, j] = od_mx[i, j] + od_mx[j, i]
+od_mx_sym = od_mx_sym / 2
+
+# Save OD matrices to file.
+with open('./od_mx_bi.txt', 'w') as f:
+    for i in range(od_mx.shape[0]):
+        for j in range(od_mx.shape[1]):
+            if od_mx[i, j] != 0:
+                f.write(f'{i},{j},{od_mx[i,j]}\n')
+
+with open('./od_mx.txt', 'w') as f:
+    for i in range(od_mx_sym.shape[0]):
+        for j in range(od_mx_sym.shape[1]):
+            if od_mx_sym[i, j] != 0:
+                f.write(f'{i},{j},{od_mx_sym[i,j]}\n')
 # %% Plot aggregate OD flow for each grid cell
 agg_out_od_g = np.zeros((grid_x_size, grid_y_size))
 agg_in_od_g = np.zeros((grid_x_size, grid_y_size))
