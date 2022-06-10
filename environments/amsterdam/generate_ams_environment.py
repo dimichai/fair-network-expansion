@@ -195,8 +195,8 @@ for i,row_i in grid.iterrows():
         if i == j:
             continue
         
-        if row_i['grid_pop'] == 0:
-            continue
+        # if row_i['grid_pop'] == 0:
+        #     continue
 
         # destination attractiveness
         mu_j = row_j['pop_density_km'] * row_j['area_grid_km'] ** 2 * fmax
@@ -225,13 +225,13 @@ for i in range(od_mx.shape[0]):
 od_mx_sym = od_mx_sym / 2
 
 # Save OD matrices to file.
-with open('./od_mx_bi.txt', 'w') as f:
+with open('./od_bi.txt', 'w') as f:
     for i in range(od_mx.shape[0]):
         for j in range(od_mx.shape[1]):
             if od_mx[i, j] != 0:
                 f.write(f'{i},{j},{od_mx[i,j]}\n')
 
-with open('./od_mx.txt', 'w') as f:
+with open('./od.txt', 'w') as f:
     for i in range(od_mx_sym.shape[0]):
         for j in range(od_mx_sym.shape[1]):
             if od_mx_sym[i, j] != 0:
@@ -383,3 +383,12 @@ fig.suptitle('GVB | Checkouts', fontsize=30)
 ax.set_title('Excluding Centraal, Zuid and Amstelstation')
 fig.colorbar(im, orientation='vertical')
 fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_gvb_checkouts.png')
+
+# %%
+with open('./average_house_price_gid.txt', 'w') as f:
+    for i, row in grid.iterrows():
+        if np.isnan(row['grid_house_price']):
+            continue
+        
+        f.write(f'{row["g_x"]},{row["g_y"]},{row["grid_house_price"]}\n')
+# %%
