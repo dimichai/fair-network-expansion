@@ -205,6 +205,9 @@ class Environment(object):
             # Create line tensors
             self.existing_lines = [l.view(len(l), 1) for l in existing_lines]
             self.existing_lines_full = [l.view(len(l), 1) for l in existing_lines_full]
+        else:
+            self.existing_lines = []
+            self.existing_lines_full = []
 
         # Apply excluded OD segments to the od_mx. E.g. segments very close to the current lines that we want to set OD to 0.
         if config.has_option('config', 'excluded_od_segments'):
