@@ -1,10 +1,24 @@
 import argparse
+import torch
+import numpy as np
 
 from constraints import ForwardConstraints
 from environment import Environment
 from trainer import Trainer
 from pathlib import Path
 from mlflow import log_metric, log_param, log_artifacts
+
+def set_seed(seed):
+    """
+    Function for setting the seed for reproducibility.
+    """
+    # np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.determinstic = True
+    torch.backends.cudnn.benchmark = False
 
 # torch.manual_seed(0)
 
@@ -42,6 +56,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    set_seed(20)
     environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file)
     constraints = ForwardConstraints(environment.grid_x_size, environment.grid_y_size, environment.existing_lines_full, environment.grid_to_vector)
     trainer = Trainer(environment, constraints, args)
