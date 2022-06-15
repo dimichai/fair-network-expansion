@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 import constants
 
@@ -22,6 +23,12 @@ class Actor(nn.Module):
 
     def update_dynamic(self, static, dynamic, *args):
         pass
+
+    @property
+    def nr_parameters(self):
+        model_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        params = sum([np.prod(p.size()) for p in model_parameters])
+        return params
 
 class PointerActor(Actor):
     def __init__(self, static_size, dynamic_size, hidden_size, num_layers, dropout):

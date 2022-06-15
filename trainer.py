@@ -53,6 +53,7 @@ class Trainer(object):
             pass
         else:
             raise NotImplementedError("{} not available as actor architecture.".format(args.actor))
+        print("Number of trainable parameters: {}".format(actor_module.nr_parameters))
         self.actor = DRL4Metro(actor_module,
                           update_dynamic,
                           environment.update_mask,
