@@ -42,7 +42,7 @@ class Environment(object):
         Returns:
             torch.Tensor: Converted vector.
         """
-        v_idx = grid_idx[:, 0] * self.grid_x_size + grid_idx[:, 1]
+        v_idx = grid_idx[:, 0] * self.grid_y_size + grid_idx[:, 1]
         return v_idx
 
     def vector_to_grid(self, vector_idx):
@@ -55,7 +55,7 @@ class Environment(object):
             torch.Tensor: covnerted grid index.
         """
 
-        grid_x = (vector_idx // self.grid_x_size)
+        grid_x = (vector_idx // self.grid_y_size)
         grid_y = (vector_idx % self.grid_y_size)
 
         # Control for when vector_idx is just a tensor of 1 idx vs when it is a tensor of multiple idxs.
