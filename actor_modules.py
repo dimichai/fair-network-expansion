@@ -116,6 +116,48 @@ class MLPActor(Actor):
     def update_dynamic(self, static, dynamic, *args):
         pass
 
+class CNNActor(Actor):
+    def __init__(self, static_size, dynamic_size, hidden_size, num_gridblocks=25, *args):
+        super(Actor, self).__init__()
+        self.grid_side_length = int(np.sqrt(num_gridblocks))
+        assert self.grid_side_length ** 2 == num_gridblocks, "Square root error {} != {}^2. Please review this code".format(num_gridblocks, self.grid_side_length)
+
+        # input: batch_size, chanels (static_size + dynamic_size), grid_side_lenght, grid_size_length
+        assert num_gridblocks == 25, "Grid sizes other than 25 are not supported"
+
+        self.cnn = nn.Sequential(*[nn.Conv2d(static_size + dynamic_size, out_channels=16, kernel_size=3),
+                                   nn.ReLU(),
+                                   nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3),
+                                   nn.ReLU()])
+        self.mlp = nn.Sequential(*[nn.Linear(32, hidden_size),
+                                   nn.ReLU(),
+                                   nn.Linear(hidden_size, num_gridblocks),
+                                   nn.Softplus()])
+
+
+
+    def init_foward(self, static, dynamic, *args):
+        # Static elements only need to be processed once, and can be used across
+        # all 'pointing' iterations. When / if the dynamic elements change,
+        # their representations will need to get calculated again.
+        pass
+
+    def forward(self, static, dynamic, *args):
+        batch_size, static_size, num_gridblocks = static.shape
+        _, dynamic_size, _ = dynamic.shape
+
+        # Construct the current state s_t
+        state_l = static.view(batch_size, num_gridblocks, static_size).clone() # TODO check if clone is nessacary
+        state_v = dynamic.view(batch_size, num_gridblocks, dynamic_size)
+        state = torch.cat([state_l, state_v], dim=2).transpose(1, 2)
+
+        cnn = self.cnn(state.view(batch_size, static_size + dynamic_size, self.grid_side_length, self.grid_side_length))
+        mlp = self.mlp(cnn.squeeze(dim=2).squeeze(dim=2))
+
+        return mlp
+
+    def update_dynamic(self, static, dynamic, *args):
+        pass
 
 class Attention(nn.Module):
     """Calculates attention over the input nodes given the current state."""

@@ -1,7 +1,7 @@
 import csv
 import datetime
 import json
-from actor_modules import PointerActor, MLPActor
+from actor_modules import PointerActor, MLPActor, CNNActor
 from environment import Environment
 import os
 from pathlib import Path
@@ -50,7 +50,8 @@ class Trainer(object):
             actor_module = PointerActor(args.static_size, args.dynamic_size, args.hidden_size, args.num_layers, args.dropout)
         elif args.actor == "mlp":
             actor_module = MLPActor(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
-            pass
+        elif args.actor == "cnn":
+            actor_module = CNNActor(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
         else:
             raise NotImplementedError("{} not available as actor architecture.".format(args.actor))
         print("Number of trainable parameters: {}".format(actor_module.nr_parameters))
