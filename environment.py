@@ -195,15 +195,19 @@ class Environment(object):
                 self.group_od_mx.append(group_mask * self.od_mx)
 
         # Read existing metro lines of the environment.
-        # json is used to load lists from ConfigParser as there is no built in way to do it.
-        existing_lines = self.process_lines(json.loads(config.get('config', 'existing_lines')))
-        # Full lines contains the lines + the squares between consecutive stations e.g. if line is (0,0)-(0,2)-(2,2) then full line also includes (0,1), (1,2).
-        # These are important for when calculating connections between generated & lines and existing lines.
-        existing_lines_full = self.process_lines(json.loads(config.get('config', 'existing_lines_full')))
+        if config.has_option('config', 'existing_lines'):
+            # json is used to load lists from ConfigParser as there is no built in way to do it.
+            existing_lines = self.process_lines(json.loads(config.get('config', 'existing_lines')))
+            # Full lines contains the lines + the squares between consecutive stations e.g. if line is (0,0)-(0,2)-(2,2) then full line also includes (0,1), (1,2).
+            # These are important for when calculating connections between generated & lines and existing lines.
+            existing_lines_full = self.process_lines(json.loads(config.get('config', 'existing_lines_full')))
 
-        # Create line tensors
-        self.existing_lines = [l.view(len(l), 1) for l in existing_lines]
-        self.existing_lines_full = [l.view(len(l), 1) for l in existing_lines_full]
+            # Create line tensors
+            self.existing_lines = [l.view(len(l), 1) for l in existing_lines]
+            self.existing_lines_full = [l.view(len(l), 1) for l in existing_lines_full]
+        else:
+            self.existing_lines = []
+            self.existing_lines_full = []
 
         # Apply excluded OD segments to the od_mx. E.g. segments very close to the current lines that we want to set OD to 0.
         if config.has_option('config', 'excluded_od_segments'):
