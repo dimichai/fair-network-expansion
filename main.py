@@ -30,6 +30,7 @@ if __name__ == "__main__":
     parser.add_argument('--dynamic_size', default=1, type=int)
     parser.add_argument('--num_layers', default=1, type=int)
     parser.add_argument('--dropout', default=0.1, type=float)
+    parser.add_argument('--seed', default=None, type=int)
     parser.add_argument('--checkpoint', default=None)
     parser.add_argument('--test', action='store_true', default=False)
     parser.add_argument('--epoch_max', default=300, type=int)
@@ -55,8 +56,9 @@ if __name__ == "__main__":
     parser.add_argument('--groups_file', default=None, type=str) # file that contains group membership of each grid square (e.g. when each square belongs to a certain income bin).
 
     args = parser.parse_args()
-
-    set_seed(20)
+    
+    if args.seed:
+        set_seed(args.seed)
     environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file)
     constraints = ForwardConstraints(environment.grid_x_size, environment.grid_y_size, environment.existing_lines_full, environment.grid_to_vector)
     trainer = Trainer(environment, constraints, args)
