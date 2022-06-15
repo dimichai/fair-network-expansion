@@ -1,6 +1,7 @@
 import csv
 import datetime
 import json
+from actor_modules import PointerActor
 from environment import Environment
 import os
 from pathlib import Path
@@ -45,11 +46,8 @@ class Trainer(object):
 
         # Prepare the models
         self.environment = environment
-        self.actor = DRL4Metro(args.static_size,
-                          args.dynamic_size,
-                          args.hidden_size,
-                          args.num_layers,
-                          args.dropout,
+        actor_module = PointerActor(args.static_size, args.dynamic_size, args.hidden_size, args.num_layers, args.dropout)
+        self.actor = DRL4Metro(actor_module,
                           update_dynamic,
                           environment.update_mask,
                           v_to_g_fn=environment.vector_to_grid,

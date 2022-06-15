@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import csv
-from actor import Encoder
 
 class StateCritic(nn.Module): # ststic+ dynamic + matrix present
     """Estimates the problem complexity.
@@ -45,3 +44,14 @@ class StateCritic(nn.Module): # ststic+ dynamic + matrix present
         output = self.fc3(output)
         # output = self.fc4(output)
         return output
+
+class Encoder(nn.Module):
+    """Encodes the static & dynamic states using 1d Convolution."""
+
+    def __init__(self, input_size, hidden_size): 
+        super(Encoder, self).__init__()
+        self.conv = nn.Conv1d(input_size, hidden_size, kernel_size=1)
+
+    def forward(self, input): 
+        output = self.conv(input)
+        return output  # (batch, hidden_size, seq_len) 
