@@ -31,7 +31,7 @@ class Actor(nn.Module):
         return params
 
 class PointerActor(Actor):
-    def __init__(self, static_size, dynamic_size, hidden_size, num_layers, dropout):
+    def __init__(self, static_size, dynamic_size, hidden_size, num_layers=1, dropout=0.1):
         super(PointerActor, self).__init__()
 
         if dynamic_size < 1:
