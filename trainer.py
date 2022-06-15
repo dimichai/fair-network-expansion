@@ -222,6 +222,7 @@ class Trainer(object):
 
     def evaluate(self, args):
         assert args.result_path, 'args.checkpoint folder needs to be given to evalute a model'
+        assert self.environment.group_od_mx, "groups file empty. Please provide a --groups_file"
 
         self.actor.eval()
 
