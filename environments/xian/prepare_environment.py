@@ -27,7 +27,7 @@ if __name__ == "__main__":
     # boundaries = torch.histogram(environment.price_mx, bins=5).bin_edges
     # buckets = torch.bucketize(environment.price_mx, boundaries)
 
-    price_mx = environment.price_mx.clone().numpy()
+    price_mx = environment.price_mx.cpu().clone().numpy()
     price_mx[price_mx <= 0] = np.nan
     bins = np.quantile(price_mx[~np.isnan(price_mx)], np.linspace(0, 1, price_bins + 1))[:-1]
     price_mx_binned = np.digitize(price_mx, bins).astype(np.float32)
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         agg_od_g[g[0], g[1]] = agg_od_v[i]
     # Plot the aggregate od
     fig, ax = plt.subplots(figsize=(5, 5))
-    ax.imshow(agg_od_g)
+    ax.imshow(agg_od_g.cpu())
     fig.suptitle(f'Xi’an, China - Aggregate OD by square')
     fig.savefig(env_path / 'aggregate_od_by_square.png', bbox_inches='tight')
 # %%

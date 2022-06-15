@@ -24,7 +24,7 @@ if __name__ == "__main__":
     env_path = Path(f"./environments/amsterdam")
     environment = Environment(env_path)
 
-    price_mx = environment.price_mx.clone().numpy()
+    price_mx = environment.price_mx.cpu().clone().numpy()
     price_mx[price_mx <= 0] = np.nan
 
     bins = np.quantile(price_mx[~np.isnan(price_mx)], np.linspace(0, 1, house_price_bins + 1))[:-1]
