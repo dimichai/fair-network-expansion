@@ -73,6 +73,43 @@ class PointerActor(Actor):
         else:
             self.decoder_input = self.x0.expand(batch_size, -1, -1)
 
+class MLPActor(Actor):
+    def __init__(self, static_size, dynamic_size, hidden_size, num_gridblocks=25):
+        super(MLPActor, self).__init__()
+
+        if dynamic_size < 1:
+            raise ValueError(':param dynamic_size: must be > 0, even if the '
+                             'problem has no dynamic elements')
+
+        # Define the encoder & decoder models
+        self.mlp = nn.Sequential(*[nn.Linear(static_size * num_gridblocks + dynamic_size * num_gridblocks, hidden_size),
+                                   nn.ReLU(),
+                                   nn.Linear(hidden_size, hidden_size),
+                                   nn.ReLU(),
+                                   nn.Linear(hidden_size, hidden_size),
+                                   nn.ReLU(),
+                                   nn.Linear(hidden_size, num_gridblocks),
+                                   nn.Softplus()])
+    def init_foward(self, static, dynamic, *args):
+        # Static elements only need to be processed once, and can be used across
+        # all 'pointing' iterations. When / if the dynamic elements change,
+        # their representations will need to get calculated again.
+        pass
+
+    def forward(self, static, dynamic, *args):
+        batch_size, static_size, num_gridblocks = static.shape
+        _, dynamic_size, _ = dynamic.shape
+        # Construct the current state s_t
+        state_l = static.view(batch_size, num_gridblocks, static_size).clone() # TODO check if clone is nessacary
+        state_v = dynamic.view(batch_size, num_gridblocks, dynamic_size)
+        state = torch.cat([state_l, state_v], dim=2).view(batch_size, num_gridblocks * 3)
+        probs = self.mlp(state.view(batch_size, num_gridblocks * static_size + num_gridblocks * dynamic_size))
+        return probs
+
+    def update_dynamic(self, static, dynamic, *args):
+        pass
+
+
 class Attention(nn.Module):
     """Calculates attention over the input nodes given the current state."""
 
