@@ -106,6 +106,10 @@ class Trainer(object):
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
 
+        # Save result and checkpoint folder for evaluation
+        self.save_dir = save_dir
+        self.checkpoint_dir = checkpoint_dir
+
         actor_optim = optim.Adam(self.actor.parameters(), lr=args.actor_lr)
         critic_optim = optim.Adam(self.critic.parameters(), lr=args.critic_lr)
 

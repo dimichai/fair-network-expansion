@@ -69,9 +69,14 @@ if __name__ == "__main__":
     for arg, value in vars(args).items():
         log_param(arg, value)
 
-    if not args.test:
+    if not args.test: # Only train
         trainer.train(args)
-    else:
+    elif args.test and not args.result_path: # Train and test
+        trainer.train(args)
+        args.result_path = trainer.save_dir
+        args.checkpoint_folder = trainer.checkpoint_dir
+        trainer.evaluate(args)
+    else: # Only test
         trainer.evaluate(args)
 
     print("made it!")
