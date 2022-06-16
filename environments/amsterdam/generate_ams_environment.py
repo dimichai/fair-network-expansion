@@ -177,14 +177,17 @@ fig.colorbar(im, orientation='vertical')
 fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_avg_house_price.png')
 
 # %% Print labels of the Grid
-fig, ax = plt.subplots(figsize=(15, 10))
+fig, ax = plt.subplots(figsize=(50, 40))
+# fig2, ax2 = plt.subplots(figsize=(25, 20))
 grid['coords'] = grid['geometry'].apply(lambda x: x.representative_point().coords[:])
 grid['coords'] = [coords[0] for coords in grid['coords']]
 
 grid.boundary.plot(ax=ax, edgecolor='gray')
 for idx, row in grid.iterrows():
-    plt.annotate(text=row['v'], xy=row['coords'],
-                 horizontalalignment='center', fontsize=8)
+    ax.annotate(text=f"{row['v']}\n{row['g_x']},{row['g_y']}", xy=row['coords'],
+                 horizontalalignment='center', verticalalignment='center', fontsize=16)
+
+fig.savefig(f'./amsterdam_env{len(rows)}x{len(cols)}_grid_labels.png')
 # %% Calculate OD Flows using the Universal Mobility Law
 d = 7
 fmin = 1/d
