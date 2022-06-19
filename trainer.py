@@ -110,6 +110,9 @@ class Trainer(object):
         self.save_dir = save_dir
         self.checkpoint_dir = checkpoint_dir
 
+        with open(save_dir / 'args.txt', 'w') as f:
+            json.dump(vars(args), f, indent=2) 
+
         actor_optim = optim.Adam(self.actor.parameters(), lr=args.actor_lr)
         critic_optim = optim.Adam(self.critic.parameters(), lr=args.critic_lr)
 
