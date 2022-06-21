@@ -123,13 +123,31 @@ class CNNActor(Actor):
         assert self.grid_side_length ** 2 == num_gridblocks, "Square root error {} != {}^2. Please review this code".format(num_gridblocks, self.grid_side_length)
 
         # input: batch_size, chanels (static_size + dynamic_size), grid_side_lenght, grid_size_length
-        assert num_gridblocks == 25, "Grid sizes other than 25 are not supported"
+        assert self.grid_side_length % 2 == 1, "Grids with an even number of blocks per side are not supported"
+        assert self.grid_side_length == 29, "Specific implementation for xian"
 
-        self.cnn = nn.Sequential(*[nn.Conv2d(static_size + dynamic_size, out_channels=16, kernel_size=3),
-                                   nn.ReLU(),
-                                   nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3),
-                                   nn.ReLU()])
-        self.mlp = nn.Sequential(*[nn.Linear(32, hidden_size),
+        # Calculate number of convolutions needed and corresponding linear sequence of output channels
+        # nr_convs = round((self.grid_side_length - 0.1) / 2)
+        # nr_channels = np.linspace(static_size + dynamic_size, hidden_size, nr_convs + 1, dtype=int)
+
+        # conv_l = [[nn.Conv2d(in_channels=nr_channels[i], out_channels=nr_channels[i+1], kernel_size=3), nn.ReLU()] for i in range(nr_convs)]
+        # conv_l = [it for block in conv_l for it in block]
+
+        nr_convs = 6
+        nr_channels = np.linspace(static_size + dynamic_size, hidden_size, nr_convs + 1, dtype=int)
+        conv_l = [[nn.Conv2d(in_channels=nr_channels[i], out_channels=nr_channels[i+1], kernel_size=3, stride=3), nn.ReLU()] for i in range(nr_convs)]
+        conv_l = [it for block in conv_l for it in block]
+        print(conv_l)
+
+        conv_l = [nn.Conv2d(in_channels= static_size + dynamic_size, out_channels=16, kernel_size=3, stride=2), nn.ReLU(),
+                  nn.Conv2d(in_channels=16, out_channels=32, kernel_size=2, stride=2), nn.ReLU(),
+                  nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=2), nn.ReLU(),
+                  nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1), nn.ReLU()]
+
+        self.cnn = nn.Sequential(*conv_l)
+        self.mlp = nn.Sequential(*[nn.Linear(64, hidden_size),
+                                #    nn.ReLU(),
+                                #    nn.Linear(hidden_size, hidden_size),
                                    nn.ReLU(),
                                    nn.Linear(hidden_size, num_gridblocks),
                                    nn.Softplus()])
