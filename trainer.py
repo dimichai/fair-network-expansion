@@ -64,6 +64,10 @@ class Trainer(object):
         self.critic = StateCritic(args.static_size, args.dynamic_size,
                              args.hidden_size, environment.grid_size).to(device)
 
+    def load_checkpoint(self, checkpoint):
+        self.actor.load_state_dict(torch.load(Path(checkpoint, 'actor.pt'), device))
+        self.critic.load_state_dict(torch.load(Path(checkpoint, 'critic.pt'), device))
+
     def gen_line_plot_grid(self, lines):
         """Generates a grid_x_max * grid_y_max grid where each grid is valued by the frequency it appears in the generated lines.
         Essentially creates a grid of the given line to plot later on.
