@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--groups_file', default=None, type=str) # file that contains group membership of each grid square (e.g. when each square belongs to a certain income bin).
 
-    parser.add_argument('--actor', choices=["pointer", "mlp", "cnn"], default="pointer", type=str)
+    parser.add_argument('--arch', choices=["pointer", "mlp", "cnn"], default="pointer", type=str)
 
     args = parser.parse_args()
     

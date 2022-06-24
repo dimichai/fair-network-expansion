@@ -46,11 +46,11 @@ class Trainer(object):
 
         # Prepare the models
         self.environment = environment
-        if args.actor == "pointer":
+        if args.arch == "pointer":
             actor_module = PointerActor(args.static_size, args.dynamic_size, args.hidden_size, args.num_layers, args.dropout)
-        elif args.actor == "mlp":
+        elif args.arch == "mlp":
             actor_module = MLPActor(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
-        elif args.actor == "cnn":
+        elif args.arch == "cnn":
             actor_module = CNNActor(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
         else:
             raise NotImplementedError("{} not available as actor architecture.".format(args.actor))
