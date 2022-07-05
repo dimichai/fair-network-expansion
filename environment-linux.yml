@@ -1,0 +1,12 @@
+name: fair-nw-expansion-linux
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - cudatoolkit  
+  - pytorch
+  - numpy
+  - matplotlib
+  - mlflow
+  - pandas

@@ -81,22 +81,36 @@ class PointerActor(Actor):
             self.decoder_input = self.x0.expand(batch_size, -1, -1)
 
 class MLPActor(Actor):
-    def __init__(self, static_size, dynamic_size, hidden_size, num_gridblocks=25):
+    def __init__(self, static_size, dynamic_size, hidden_size, nr_layers=5, num_gridblocks=25):
         super(MLPActor, self).__init__()
 
         if dynamic_size < 1:
             raise ValueError(':param dynamic_size: must be > 0, even if the '
                              'problem has no dynamic elements')
 
-        # Define the encoder & decoder models
-        self.mlp = nn.Sequential(*[nn.Linear(static_size * num_gridblocks + dynamic_size * num_gridblocks, hidden_size),
-                                   nn.ReLU(),
-                                   nn.Linear(hidden_size, hidden_size),
-                                   nn.ReLU(),
-                                   nn.Linear(hidden_size, hidden_size),
-                                   nn.ReLU(),
-                                   nn.Linear(hidden_size, num_gridblocks),
-                                   nn.Softplus()])
+        # # Define the encoder & decoder models
+        # self.mlp = nn.Sequential(*[nn.Linear(static_size * num_gridblocks + dynamic_size * num_gridblocks, hidden_size),
+        #                            nn.ReLU(),
+        #                            nn.Linear(hidden_size, hidden_size),
+        #                            nn.ReLU(),
+        #                            nn.Linear(hidden_size, hidden_size),
+        #                            nn.ReLU(),
+        #                            nn.Linear(hidden_size, hidden_size),
+        #                            nn.ReLU(),
+        #                            nn.Linear(hidden_size, hidden_size),
+        #                            nn.ReLU(),
+        #                         #    nn.Linear(hidden_size, hidden_size),
+        #                         #    nn.ReLU(),
+        #                            nn.Linear(hidden_size, num_gridblocks),
+        #                            nn.Softplus()])
+
+        mlp = [[nn.Linear(hidden_size, hidden_size),
+                                   nn.ReLU()] for i in range(nr_layers - 2)]
+        mlp = [it for block in mlp for it in block]
+        self.mlp = nn.Sequential(*([nn.Linear(static_size * num_gridblocks + dynamic_size * num_gridblocks, hidden_size),
+                                   nn.ReLU()] +
+                                   mlp + 
+                                   [nn.Linear(hidden_size, num_gridblocks)]))
     def init_foward(self, static, dynamic, *args):
         # Static elements only need to be processed once, and can be used across
         # all 'pointing' iterations. When / if the dynamic elements change,
@@ -118,21 +132,42 @@ class MLPActor(Actor):
 
 class CNNActor(Actor):
     def __init__(self, static_size, dynamic_size, hidden_size, num_gridblocks=25, *args):
-        super(Actor, self).__init__()
+        super(CNNActor, self).__init__()
         self.grid_side_length = int(np.sqrt(num_gridblocks))
         assert self.grid_side_length ** 2 == num_gridblocks, "Square root error {} != {}^2. Please review this code".format(num_gridblocks, self.grid_side_length)
 
         # input: batch_size, chanels (static_size + dynamic_size), grid_side_lenght, grid_size_length
-        assert num_gridblocks == 25, "Grid sizes other than 25 are not supported"
+        # assert self.grid_side_length % 2 == 1, "Grids with an even number of blocks per side are not supported"
+        # assert self.grid_side_length == 29, "Specific implementation for xian"
 
-        self.cnn = nn.Sequential(*[nn.Conv2d(static_size + dynamic_size, out_channels=16, kernel_size=3),
+        # Calculate number of convolutions needed and corresponding linear sequence of output channels
+        # nr_convs = round((self.grid_side_length - 0.1) / 2)
+        # nr_channels = np.linspace(static_size + dynamic_size, hidden_size, nr_convs + 1, dtype=int)
+
+        # conv_l = [[nn.Conv2d(in_channels=nr_channels[i], out_channels=nr_channels[i+1], kernel_size=3), nn.ReLU()] for i in range(nr_convs)]
+        # conv_l = [it for block in conv_l for it in block]
+
+        # nr_convs = 6
+        # nr_channels = np.linspace(static_size + dynamic_size, hidden_size, nr_convs + 1, dtype=int)
+        # conv_l = [[nn.Conv2d(in_channels=nr_channels[i], out_channels=nr_channels[i+1], kernel_size=3, stride=3), nn.ReLU()] for i in range(nr_convs)]
+        # conv_l = [it for block in conv_l for it in block]
+
+        # conv_l = [nn.Conv2d(in_channels= static_size + dynamic_size, out_channels=16, kernel_size=3, stride=2), nn.ReLU(),
+        #           nn.Conv2d(in_channels=16, out_channels=32, kernel_size=2, stride=2), nn.ReLU(),
+        #           nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=2), nn.ReLU(),
+        #           nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1), nn.ReLU()]
+
+        conv_l = [nn.Conv2d(static_size + dynamic_size, 8, kernel_size=3, padding=1), nn.ReLU(),
+                  nn.Conv2d(8, 16, kernel_size=3, padding=1), nn.ReLU(),
+                  nn.Conv2d(16, 32, kernel_size=3), nn.ReLU(),
+                  nn.Conv2d(32, 64, kernel_size=3), nn.ReLU()]
+
+        self.cnn = nn.Sequential(*conv_l)
+        self.mlp = nn.Sequential(*[nn.Linear(64, hidden_size),
+                                #    nn.ReLU(),
+                                #    nn.Linear(hidden_size, hidden_size),
                                    nn.ReLU(),
-                                   nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3),
-                                   nn.ReLU()])
-        self.mlp = nn.Sequential(*[nn.Linear(32, hidden_size),
-                                   nn.ReLU(),
-                                   nn.Linear(hidden_size, num_gridblocks),
-                                   nn.Softplus()])
+                                   nn.Linear(hidden_size, num_gridblocks)])
 
 
 

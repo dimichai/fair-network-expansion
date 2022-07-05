@@ -11,7 +11,7 @@ import torch
 import torch.optim as optim
 from actor import DRL4Metro
 from constraints import Constraints
-from critic import StateCritic
+from critic import PointerCritic, MLPCritic, CNNCritic
 import constants
 from reward import group_utility, od_utility, discounted_development_utility, lowest_quintile_utility
 import matplotlib.pyplot as plt
@@ -46,23 +46,27 @@ class Trainer(object):
 
         # Prepare the models
         self.environment = environment
-        if args.actor == "pointer":
+        if args.arch == "pointer":
             actor_module = PointerActor(args.static_size, args.dynamic_size, args.hidden_size, args.num_layers, args.dropout)
-        elif args.actor == "mlp":
-            actor_module = MLPActor(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
-        elif args.actor == "cnn":
+            critic_module = PointerCritic(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
+        elif args.arch == "mlp":
+            actor_module = MLPActor(args.static_size, args.dynamic_size, args.hidden_size, 
+                                    args.actor_mlp_layers, environment.grid_size)
+            critic_module = MLPCritic(args.static_size, args.dynamic_size, args.hidden_size, 
+                                      args.critic_mlp_layers, environment.grid_size)
+        elif args.arch == "cnn":
             actor_module = CNNActor(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
+            critic_module = CNNCritic(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
         else:
             raise NotImplementedError("{} not available as actor architecture.".format(args.actor))
-        print("Number of trainable parameters: {}".format(actor_module.nr_parameters))
+        print(f"Number of trainable parameters actor-critic: {actor_module.nr_parameters} / {critic_module.nr_parameters}")
         self.actor = DRL4Metro(actor_module,
                           update_dynamic,
                           environment.update_mask,
                           v_to_g_fn=environment.vector_to_grid,
                           vector_allow_fn=constraints.allowed_vector_indices).to(device)
 
-        self.critic = StateCritic(args.static_size, args.dynamic_size,
-                             args.hidden_size, environment.grid_size).to(device)
+        self.critic = critic_module.to(device)
 
     def load_checkpoint(self, checkpoint):
         self.actor.load_state_dict(torch.load(Path(checkpoint, 'actor.pt'), device))
