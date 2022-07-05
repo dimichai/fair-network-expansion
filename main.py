@@ -24,7 +24,8 @@ def set_seed(seed):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fair Network Expansion with Reinforcement Learning")
-
+    
+    # parser.add_argument('--cpu', action='store_true', default=False) # Force cpu device
     parser.add_argument('--hidden_size', default=128, type=int)
     parser.add_argument('--static_size', default=2, type=int)
     parser.add_argument('--dynamic_size', default=1, type=int)
@@ -40,6 +41,8 @@ if __name__ == "__main__":
     parser.add_argument('--result_path', default=None, type=str)
     parser.add_argument('--actor_lr', default=10e-4, type=float)
     parser.add_argument('--critic_lr', default=10e-4, type=float)
+    parser.add_argument('--actor_mlp_layers', default=5, type=int)
+    parser.add_argument('--critic_mlp_layers', default=4, type=int)
     parser.add_argument('--station_num_lim', default=45, type=int)  # limit the number of stations in a line
     parser.add_argument('--budget', default=210, type=int)
     parser.add_argument('--max_grad_norm', default=2., type=float)

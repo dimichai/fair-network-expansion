@@ -3,9 +3,24 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import numpy as np
 import csv
 
-class StateCritic(nn.Module): # ststic+ dynamic + matrix present
+class Critic(nn.Module):
+    def __init__(self):
+        super(Critic, self).__init__()
+        pass
+
+    def forward(self):
+        raise NotImplementedError("Abstract method. Implement this!")
+
+    @property
+    def nr_parameters(self):
+        model_parameters = filter(lambda p: p.requires_grad, self.parameters())
+        params = sum([np.prod(p.size()) for p in model_parameters])
+        return params
+
+class PointerCritic(Critic): # ststic+ dynamic + matrix present
     """Estimates the problem complexity.
 
     This is a basic module that just looks at the log-probabilities predicted by
@@ -13,10 +28,10 @@ class StateCritic(nn.Module): # ststic+ dynamic + matrix present
     """
 
     def __init__(self, static_size, dynamic_size, hidden_size, grid_size):
-        super(StateCritic, self).__init__()
+        super(PointerCritic, self).__init__()
 
-        self.static_encoder = Encoder(static_size, hidden_size)
-        self.dynamic_encoder = Encoder(dynamic_size, hidden_size)
+        self.static_encoder = nn.Conv1d(static_size, hidden_size, kernel_size=1)
+        self.dynamic_encoder = nn.Conv1d(dynamic_size, hidden_size, kernel_size=1)
 
         # Define the encoder & decoder models
         self.fc1 = nn.Conv2d(hidden_size * 2, 20, kernel_size=5, stride=1, padding=2)
@@ -45,13 +60,57 @@ class StateCritic(nn.Module): # ststic+ dynamic + matrix present
         # output = self.fc4(output)
         return output
 
-class Encoder(nn.Module):
-    """Encodes the static & dynamic states using 1d Convolution."""
+class MLPCritic(Critic):
+    def __init__(self, static_size, dynamic_size, hidden_size, nr_layers=4, num_gridblocks=25):
+        super(MLPCritic, self).__init__()
 
-    def __init__(self, input_size, hidden_size): 
-        super(Encoder, self).__init__()
-        self.conv = nn.Conv1d(input_size, hidden_size, kernel_size=1)
+        mlp = [[nn.Linear(hidden_size, hidden_size),
+                                   nn.ReLU()] for i in range(nr_layers - 2)]
+        mlp = [it for block in mlp for it in block]
+        self.mlp = nn.Sequential(*([nn.Linear(static_size * num_gridblocks + dynamic_size * num_gridblocks, hidden_size),
+                                   nn.ReLU()] +
+                                   mlp + 
+                                   [nn.Linear(hidden_size, 1)]))
+        
+        for p in self.parameters():
+            if len(p.shape) > 1:
+                nn.init.xavier_uniform_(p)
+    
+    def forward(self, static, dynamic, hidden_size, grid_x_size, grid_y_size):
+        batch_size, static_size, num_gridblocks = static.shape
+        _, dynamic_size, _ = dynamic.shape
+        state_l = static.view(batch_size, num_gridblocks, static_size).clone() # TODO check if clone is nessacary
+        state_v = dynamic.view(batch_size, num_gridblocks, dynamic_size)
+        state = torch.cat([state_l, state_v], dim=2).view(batch_size, num_gridblocks * 3)
+        probs = self.mlp(state.view(batch_size, num_gridblocks * static_size + num_gridblocks * dynamic_size))
+        return probs
 
-    def forward(self, input): 
-        output = self.conv(input)
-        return output  # (batch, hidden_size, seq_len) 
+class CNNCritic(Critic):
+    def __init__(self, static_size, dynamic_size, hidden_size, num_gridblocks=25, *args):
+        super(CNNCritic, self).__init__()
+        self.grid_side_length = int(np.sqrt(num_gridblocks))
+        conv_l = [nn.Conv2d(static_size + dynamic_size, 8, kernel_size=3, padding=1), nn.ReLU(),
+                  nn.Conv2d(8, 16, kernel_size=3, padding=1), nn.ReLU(),
+                  nn.Conv2d(16, 32, kernel_size=3), nn.ReLU(),
+                  nn.Conv2d(32, 64, kernel_size=3), nn.ReLU()]
+
+        self.cnn = nn.Sequential(*conv_l)
+        self.mlp = nn.Sequential(*[nn.Linear(64, hidden_size),
+                                #    nn.ReLU(),
+                                #    nn.Linear(hidden_size, hidden_size),
+                                   nn.ReLU(),
+                                   nn.Linear(hidden_size, 1)])
+
+    def forward(self, static, dynamic, *args):
+        batch_size, static_size, num_gridblocks = static.shape
+        _, dynamic_size, _ = dynamic.shape
+
+        # Construct the current state s_t
+        state_l = static.view(batch_size, num_gridblocks, static_size).clone() # TODO check if clone is nessacary
+        state_v = dynamic.view(batch_size, num_gridblocks, dynamic_size)
+        state = torch.cat([state_l, state_v], dim=2).transpose(1, 2)
+
+        cnn = self.cnn(state.view(batch_size, static_size + dynamic_size, self.grid_side_length, self.grid_side_length))
+        mlp = self.mlp(cnn.squeeze(dim=2).squeeze(dim=2))
+
+        return mlp
