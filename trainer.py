@@ -50,9 +50,9 @@ class Trainer(object):
             actor_module = PointerActor(args.static_size, args.dynamic_size, args.hidden_size, args.num_layers, args.dropout)
             critic_module = PointerCritic(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
         elif args.arch == "mlp":
-            actor_module = MLPActor(args.static_size, args.dynamic_size, args.hidden_size, 
+            actor_module = MLPActor(args.static_size, args.dynamic_size, args.hidden_size,
                                     args.actor_mlp_layers, environment.grid_size)
-            critic_module = MLPCritic(args.static_size, args.dynamic_size, args.hidden_size, 
+            critic_module = MLPCritic(args.static_size, args.dynamic_size, args.hidden_size,
                                       args.critic_mlp_layers, environment.grid_size)
         elif args.arch == "cnn":
             actor_module = CNNActor(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
@@ -61,10 +61,10 @@ class Trainer(object):
             raise NotImplementedError("{} not available as actor architecture.".format(args.actor))
         print(f"Number of trainable parameters actor-critic: {actor_module.nr_parameters} / {critic_module.nr_parameters}")
         self.actor = DRL4Metro(actor_module,
-                          update_dynamic,
-                          environment.update_mask,
-                          v_to_g_fn=environment.vector_to_grid,
-                          vector_allow_fn=constraints.allowed_vector_indices).to(device)
+                               update_dynamic,
+                               environment.update_mask,
+                               v_to_g_fn=environment.vector_to_grid,
+                               vector_allow_fn=constraints.allowed_vector_indices).to(device)
 
         self.critic = critic_module.to(device)
 
@@ -88,8 +88,8 @@ class Trainer(object):
 
             for i in range(line_g.shape[1]):
                 data[line_g[0, i], line_g[1, i]] += 1
-        
-        data = data/len(lines)
+
+        data = data / len(lines)
 
         return data
 
@@ -119,7 +119,7 @@ class Trainer(object):
         self.checkpoint_dir = checkpoint_dir
 
         with open(save_dir / 'args.txt', 'w') as f:
-            json.dump(vars(args), f, indent=2) 
+            json.dump(vars(args), f, indent=2)
 
         actor_optim = optim.Adam(self.actor.parameters(), lr=args.actor_lr)
         critic_optim = optim.Adam(self.critic.parameters(), lr=args.critic_lr)
@@ -130,7 +130,7 @@ class Trainer(object):
 
         static = self.environment.static
         dynamic = torch.zeros((1, args.dynamic_size, self.environment.grid_size),
-                            device=device).float()  # size with batch
+                              device=device).float()  # size with batch
 
         for epoch in range(args.epoch_max):
             self.actor.train()
@@ -142,8 +142,8 @@ class Trainer(object):
 
             for _ in range(args.train_size):  # this loop accumulates a batch
                 tour_idx, tour_logp = self.actor(static, dynamic, args.station_num_lim, budget=args.budget,
-                                            line_unit_price=args.line_unit_price, station_price=args.station_price,
-                                            decoder_input=None, last_hh=None)
+                                                 line_unit_price=args.line_unit_price, station_price=args.station_price,
+                                                 decoder_input=None, last_hh=None)
 
                 reward = od_utility(tour_idx, self.environment)
                 od_list.append(reward.item())
@@ -163,7 +163,7 @@ class Trainer(object):
                 social_equity_list.append(ses_reward.item())
 
                 critic_est = self.critic(static, dynamic, args.hidden_size,
-                                    self.environment.grid_x_size, self.environment.grid_y_size).view(-1)
+                                         self.environment.grid_x_size, self.environment.grid_y_size).view(-1)
                 advantage = (reward - critic_est)
                 per_actor_loss = -advantage.detach() * tour_logp.sum(dim=1)
                 per_critic_loss = advantage ** 2
@@ -175,8 +175,8 @@ class Trainer(object):
             actor_loss = actor_loss / args.train_size
             critic_loss = critic_loss / args.train_size
             avg_reward = rewards_sum / args.train_size
-            average_od = sum(od_list)/len(od_list)
-            average_Ac = sum(social_equity_list)/len(social_equity_list)
+            average_od = sum(od_list) / len(od_list)
+            average_Ac = sum(social_equity_list) / len(social_equity_list)
 
             average_reward_list.append(avg_reward.half().item())
             actor_loss_list.append(actor_loss.half().item())
@@ -196,7 +196,7 @@ class Trainer(object):
 
             cost_time = time.time() - epoch_start
             print('epoch %d, average_reward: %2.3f, actor_loss: %2.4f,  critic_loss: %2.4f, cost_time: %2.4fs'
-                % (epoch, avg_reward.item(), actor_loss.item(), critic_loss.item(), cost_time))
+                  % (epoch, avg_reward.item(), actor_loss.item(), critic_loss.item(), cost_time))
 
             log_metric('average_reward', avg_reward.item())
             log_metric('actor_loss', actor_loss.item())
@@ -256,7 +256,7 @@ class Trainer(object):
         # Setup the initial static and dynamic states.
         static = self.environment.static
         dynamic = torch.zeros((1, args.dynamic_size, self.environment.grid_size),
-                            device=device).float()  # size with batch
+                              device=device).float()  # size with batch
 
         # generate 128 different lines to have a bigger sample size
         gen_lines = []
@@ -282,11 +282,11 @@ class Trainer(object):
 
         # Evaluate OD metrics
         satisfied_ods = np.zeros(len(gen_lines))
-        satisfied_group_ods = np.zeros((len(gen_lines), len(self.environment.group_od_mx))) # make an array of dimensions lines x groups to store ods by line by group
+        satisfied_group_ods = np.zeros((len(gen_lines), len(self.environment.group_od_mx)))  # make an array of dimensions lines x groups to store ods by line by group
         for i, line in enumerate(gen_lines):
             sat_od_mask = self.environment.satisfied_od_mask(line)
             satisfied_ods[i] = (sat_od_mask * self.environment.od_mx).sum().item()
-            
+
             if self.environment.group_od_mx:
                 for j, g_od in enumerate(self.environment.group_od_mx):
                     satisfied_group_ods[i, j] = (g_od * sat_od_mask).sum().item()
@@ -326,6 +326,6 @@ class Trainer(object):
             'group_gini': group_gini,
             'group_pct_gini': group_pct_gini
         }
-        
+
         with open(Path(args.result_path, 'result_metrics.json'), 'w') as outfile:
             json.dump(result_metrics, outfile)

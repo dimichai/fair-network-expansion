@@ -9,7 +9,8 @@ import constants
 
 device = constants.device
 
-class DRL4Metro(nn.Module):  
+
+class DRL4Metro(nn.Module):
     """Defines the main Encoder, Decoder, and Pointer combinatorial models.
 
     Parameters
@@ -52,10 +53,9 @@ class DRL4Metro(nn.Module):
         # Define the encoder & decoder models
         self.actor = actor
 
-
     def forward(self, static, dynamic, station_num_lim, budget=None, initial_direct = None,line_unit_price = None, station_price = None,
                 decoder_input=None, last_hh=None):
-        # initial_direct: direction 
+        # initial_direct: direction
         # line_unit_price: example:  1.0
         # station_price: example: 2.0
         """
@@ -85,21 +85,21 @@ class DRL4Metro(nn.Module):
             per_line_cost = line_unit_price * dis
             return per_line_cost
 
-        batch_size, static_size, sequence_size = static.size()
+        batch_size, _, sequence_size = static.size()
         self.direction_vector = torch.zeros((1, 8), device=device).long()
 
-        if initial_direct: # give the initial direction
+        if initial_direct:  # give the initial direction
             for i in initial_direct:
                 self.direction_vector[0][i] = 1
 
         if budget:
             available_fund = budget
 
-        if decoder_input is not None: # TODO check why this is neccesary
+        if decoder_input is not None:
             self.actor.decoder_input = decoder_input
 
         vector_index_allow = torch.tensor([1])
-        
+
         specify_original_station = 0
         # For this problem, there are no dynamic elements - so dynamic tensor is zeros.
         if dynamic.sum():
@@ -115,7 +115,7 @@ class DRL4Metro(nn.Module):
             exist_agent_last_grid = grid_index1.view(1, 2)  # grid_x,grid_y
 
             self.direction_vector, vector_index_allow = self.vector_allow_fn(agent_current_index, grid_index1,
-                                                                         exist_agent_last_grid, self.direction_vector)  
+                                                                             exist_agent_last_grid, self.direction_vector)
 
             if self.mask_fn is not None: 
                 if vector_index_allow.size()[0]: 
@@ -128,8 +128,6 @@ class DRL4Metro(nn.Module):
             # Always use a mask - if no function is provided, we don't update it
             mask = torch.ones(batch_size, sequence_size, device=device)
             ptr = None
-            
-
 
         # Structures for holding the output sequences
         tour_idx, tour_logp = [], []
@@ -139,36 +137,35 @@ class DRL4Metro(nn.Module):
             tour_idx.append(ptr.data.unsqueeze(1))
 
         self.actor.init_foward(static, dynamic)
-        
-        
+
         count_num = 0
         for _ in range(max_steps):
             count_num = count_num + 1
 
             if vector_index_allow.size()[0] == 0:
-                break  
+                break
 
             if budget:
                 if available_fund <= 0:
                     break
-            
+
             self.actor.update_dynamic(static, dynamic, ptr)
             probs = self.actor.forward(static, dynamic)
             probs = F.softmax(probs + mask*10000, dim=1)
-            # TODO decide wether this is part of the actor architecture 
+            # TODO decide wether this is part of the actor architecture
             # or part of the logic
 
             # When training, sample the next step according to its probability.
             # During testing, we can take the greedy approach and choose highest
             if self.training:
                 # print('####################  training')
-                m = torch.distributions.Categorical(probs) 
+                m = torch.distributions.Categorical(probs)
 
                 # Sometimes an issue with Categorical & sampling on GPU; See:
                 # https://github.com/pemami4911/neural-combinatorial-rl-pytorch/issues/5
                 ptr = m.sample()
-                
-                logp = m.log_prob(ptr) #
+
+                logp = m.log_prob(ptr)
             else:
                 # print('!!!!!!!!!!!!!!!!!!!!  Greedy')
                 prob, ptr = torch.max(probs, 1)  # Greedy
@@ -177,21 +174,20 @@ class DRL4Metro(nn.Module):
             # After visiting a node update the dynamic representation
             # Change the vector index to grid index
             grid_index1 = self.v_to_g_fn(ptr.data[0])   # CUDA  ptr: current grid selected by network
-            agent_current_index = ptr.data.cpu().numpy()[0] # int
+            agent_current_index = ptr.data.cpu().numpy()[0]  # int
 
             # Got the agent grid index sequence
             if count_num == 1 and specify_original_station == 0:
                 agent_grids = grid_index1
                 exist_agent_last_grid = grid_index1.view(1, 2)  # grid_x,grid_y
             else:
-                exist_agent_last_grid = agent_grids[-1].view(1, 2) 
-                agent_grids = torch.cat((agent_grids, grid_index1), dim=0)  
-
+                exist_agent_last_grid = agent_grids[-1].view(1, 2)
+                agent_grids = torch.cat((agent_grids, grid_index1), dim=0)
 
             self.direction_vector, vector_index_allow = self.vector_allow_fn(agent_current_index, grid_index1, exist_agent_last_grid, self.direction_vector)
 
-            tour_logp.append(logp.unsqueeze(1)) # logp.unsqueeze(1) 
-            tour_idx.append(ptr.data.unsqueeze(1)) #ptr.data.unsqueeze(1) 
+            tour_logp.append(logp.unsqueeze(1))  # logp.unsqueeze(1)
+            tour_idx.append(ptr.data.unsqueeze(1))  # ptr.data.unsqueeze(1)
 
             # After visiting a node update the dynamic representation
             if self.update_fn is not None:
@@ -199,7 +195,7 @@ class DRL4Metro(nn.Module):
 
             # And update the mask so we don't re-visit if we don't need to
             if self.mask_fn is not None:
-                if vector_index_allow.size()[0]: 
+                if vector_index_allow.size()[0]:
                     mask = self.mask_fn(vector_index_allow).detach()
 
             # budget
@@ -211,6 +207,6 @@ class DRL4Metro(nn.Module):
         tour_logp = torch.cat(tour_logp, dim=1)  # (batch_size, seq_len)
 
         return tour_idx, tour_logp
-        
+
 if __name__ == '__main__':
     raise Exception('Cannot be called from main')

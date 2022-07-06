@@ -8,6 +8,7 @@ from trainer import Trainer
 from pathlib import Path
 from mlflow import log_metric, log_param, log_artifacts
 
+
 def set_seed(seed):
     """
     Function for setting the seed for reproducibility.
@@ -20,11 +21,9 @@ def set_seed(seed):
     torch.backends.cudnn.determinstic = True
     torch.backends.cudnn.benchmark = False
 
-# torch.manual_seed(0)
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fair Network Expansion with Reinforcement Learning")
-    
+
     # parser.add_argument('--cpu', action='store_true', default=False) # Force cpu device
     parser.add_argument('--hidden_size', default=128, type=int)
     parser.add_argument('--static_size', default=2, type=int)
@@ -35,7 +34,7 @@ if __name__ == "__main__":
     parser.add_argument('--checkpoint', default=None)
     parser.add_argument('--test', action='store_true', default=False)
     parser.add_argument('--epoch_max', default=300, type=int)
-    parser.add_argument('--train_size',default=128, type=int) # like a batch_size
+    parser.add_argument('--train_size', default=128, type=int)  # like a batch_size
     parser.add_argument('--line_unit_price', default=1.0, type=float)
     parser.add_argument('--station_price', default=5.0, type=float)
     parser.add_argument('--result_path', default=None, type=str)
@@ -53,15 +52,15 @@ if __name__ == "__main__":
         # - ai_economist: reward used by the ai_economist paper: total_utility * (1-gini(total_utility))
         # - rawls: returns the total satisfied OD of the lowest quintile group
     parser.add_argument('--reward', default='weighted', type=str)
-    parser.add_argument('--ses_weight', default=0, type=float) # weight to assign to the socio-economic status (equity)reward, only works for --reward=weighted
-    parser.add_argument('--var_lambda', default=0, type=float) # weight to assign to the variance of the satisfied OD among groups, only works for --reward=group
+    parser.add_argument('--ses_weight', default=0, type=float)  # weight to assign to the socio-economic status (equity)reward, only works for --reward=weighted
+    parser.add_argument('--var_lambda', default=0, type=float)  # weight to assign to the variance of the satisfied OD among groups, only works for --reward=group
 
-    parser.add_argument('--groups_file', default=None, type=str) # file that contains group membership of each grid square (e.g. when each square belongs to a certain income bin).
+    parser.add_argument('--groups_file', default=None, type=str)  # file that contains group membership of each grid square (e.g. when each square belongs to a certain income bin).
 
     parser.add_argument('--arch', choices=["pointer", "mlp", "cnn"], default="pointer", type=str)
 
     args = parser.parse_args()
-    
+
     if args.seed:
         set_seed(args.seed)
     environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file)
@@ -72,14 +71,14 @@ if __name__ == "__main__":
     for arg, value in vars(args).items():
         log_param(arg, value)
 
-    if not args.test: # Only train
+    if not args.test:  # Only train
         trainer.train(args)
-    elif args.test and not args.result_path: # Train and test
+    elif args.test and not args.result_path:  # Train and test
         trainer.train(args)
         args.result_path = trainer.save_dir
         args.checkpoint_folder = trainer.checkpoint_dir
         trainer.evaluate(args)
-    else: # Only test
+    else:  # Only test
         trainer.evaluate(args)
 
     print("made it!")
