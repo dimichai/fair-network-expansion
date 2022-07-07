@@ -137,7 +137,7 @@ def ggi(tour_idx: torch.Tensor, environment: Environment, weight, use_pct=True):
         group_rw = sat_group_ods
 
     # Generate weights for each group.
-    weights = torch.Tensor([1/(weight**i) for i in range(group_rw.shape[0])], device=device)
+    weights = torch.tensor([1/(weight**i) for i in range(group_rw.shape[0])], device=device)
     # "Normalize" weights to sum to 1
     weights = weights/weights.sum()
     
