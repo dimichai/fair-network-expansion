@@ -39,6 +39,7 @@ if __name__ == "__main__":
     parser.add_argument('--var_lambda', default=0, type=float) # weight to assign to the variance of the satisfied OD among groups, only works for --reward=group
 
     parser.add_argument('--groups_file', default=None, type=str) # file that contains group membership of each grid square (e.g. when each square belongs to a certain income bin).
+    parser.add_argument('--no_log', action='store_true', default=False)
 
     args = parser.parse_args()
 

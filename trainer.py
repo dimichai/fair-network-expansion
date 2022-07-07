@@ -94,14 +94,16 @@ class Trainer(object):
 
         train_start = time.time()
         print(f'Starts training on {device} - Model location is {save_dir}')
-        log_param('save_dir', save_dir)
+        
+        if not args.no_log:
+            log_param('save_dir', save_dir)
 
-        checkpoint_dir = save_dir / 'checkpoints'
-        if not os.path.exists(checkpoint_dir):
-            os.makedirs(checkpoint_dir)
+            checkpoint_dir = save_dir / 'checkpoints'
+            if not os.path.exists(checkpoint_dir):
+                os.makedirs(checkpoint_dir)
 
-        with open(save_dir / 'args.txt', 'w') as f:
-            json.dump(vars(args), f, indent=2) 
+            with open(save_dir / 'args.txt', 'w') as f:
+                json.dump(vars(args), f, indent=2) 
 
         actor_optim = optim.Adam(self.actor.parameters(), lr=args.actor_lr)
         critic_optim = optim.Adam(self.critic.parameters(), lr=args.critic_lr)
@@ -180,50 +182,55 @@ class Trainer(object):
             print('epoch %d, average_reward: %2.3f, actor_loss: %2.4f,  critic_loss: %2.4f, cost_time: %2.4fs'
                 % (epoch, avg_reward.item(), actor_loss.item(), critic_loss.item(), cost_time))
 
-            log_metric('average_reward', avg_reward.item())
-            log_metric('actor_loss', actor_loss.item())
-            log_metric('critic_loss', critic_loss.item())
-            log_metric('average_od', average_od)
-            log_metric('average_ac', average_Ac)
 
             torch.cuda.empty_cache()  # reduce memory
+            
+            if not args.no_log:
+                log_metric('average_reward', avg_reward.item())
+                log_metric('actor_loss', actor_loss.item())
+                log_metric('critic_loss', critic_loss.item())
+                log_metric('average_od', average_od)
+                log_metric('average_ac', average_Ac)
 
-            # Save the weights of an epoch
-            epoch_dir = checkpoint_dir / str(epoch)
-            if not os.path.exists(epoch_dir):
-                os.makedirs(epoch_dir)
+                # Save the weights of an epoch
+                epoch_dir = checkpoint_dir / str(epoch)
+                if not os.path.exists(epoch_dir):
+                    os.makedirs(epoch_dir)
 
-            torch.save(self.actor.state_dict(), epoch_dir / 'actor.pt')
-            torch.save(self.critic.state_dict(), epoch_dir / 'critic.pt')
+                torch.save(self.actor.state_dict(), epoch_dir / 'actor.pt')
+                torch.save(self.critic.state_dict(), epoch_dir / 'critic.pt')
 
-            # Save best model parameters
-            if avg_reward.item() > best_reward:
-                best_reward = avg_reward.item()
+                # Save best model parameters
+                if avg_reward.item() > best_reward:
+                    best_reward = avg_reward.item()
 
-                torch.save(self.actor.state_dict(), save_dir / 'actor.pt')
-                torch.save(self.critic.state_dict(), save_dir / 'critic.pt')
+                    torch.save(self.actor.state_dict(), save_dir / 'actor.pt')
+                    torch.save(self.critic.state_dict(), save_dir / 'critic.pt')
 
-        with open(save_dir / 'reward_actloss_criloss.txt', 'w') as f:
-            for i in range(args.epoch_max):
-                per_average_reward_record = average_reward_list[i]
-                per_actor_loss_record = actor_loss_list[i]
-                per_critic_loss_record = critic_loss_list[i]
-                per_epoch_od = average_od_list[i]
-                per_epoch_Ac = average_Ac_list[i]
+        if not args.no_log:
+            with open(save_dir / 'reward_actloss_criloss.txt', 'w') as f:
+                for i in range(args.epoch_max):
+                    per_average_reward_record = average_reward_list[i]
+                    per_actor_loss_record = actor_loss_list[i]
+                    per_critic_loss_record = critic_loss_list[i]
+                    per_epoch_od = average_od_list[i]
+                    per_epoch_Ac = average_Ac_list[i]
 
-                to_write = f'{per_average_reward_record}\t{per_actor_loss_record}\t{per_critic_loss_record}\t{per_epoch_od}\t{per_epoch_Ac}\n'
+                    to_write = f'{per_average_reward_record}\t{per_actor_loss_record}\t{per_critic_loss_record}\t{per_epoch_od}\t{per_epoch_Ac}\n'
 
-                f.write(to_write)
+                    f.write(to_write)
 
         plt.plot(average_reward_list, '-', label="reward")
         plt.title(f'Reward vs. epochs - {now}')
         plt.ylabel('Reward')
         plt.legend(loc='best')
-        plt.savefig(save_dir / 'loss.png', dpi=800)
-        log_artifact(save_dir / 'loss.png')
+        if not args.no_log:
+            plt.savefig(save_dir / 'loss.png', dpi=800)
+            log_artifact(save_dir / 'loss.png')
 
         print(f'Finished training in {(time.time() - train_start)/60} minutes.')
-        log_metric('training_time', (time.time() - train_start)/60)
+        if not args.no_log:
+            log_metric('training_time', (time.time() - train_start)/60)
 
     def evaluate(self, args):
         assert args.result_path, 'args.checkpoint folder needs to be given to evalute a model'
@@ -246,9 +253,10 @@ class Trainer(object):
                 tour_idx, _ = self.actor(static, dynamic, args.station_num_lim, decoder_input=None, last_hh=None)
                 gen_lines.append(tour_idx)
 
-        with open(Path(args.result_path, 'tour_idx_multiple.txt'), "w", newline='') as f:
-            wr = csv.writer(f)
-            wr.writerows([line[0].tolist() for line in gen_lines])
+        if not args.no_log:
+            with open(Path(args.result_path, 'tour_idx_multiple.txt'), "w", newline='') as f:
+                wr = csv.writer(f)
+                wr.writerows([line[0].tolist() for line in gen_lines])
 
         # Plot the average generated line (from the multiple sample generated lines)
         plot_grid = self.gen_line_plot_grid(gen_lines)
@@ -308,5 +316,6 @@ class Trainer(object):
             'group_pct_gini': group_pct_gini
         }
         
-        with open(Path(args.result_path, 'result_metrics.json'), 'w') as outfile:
-            json.dump(result_metrics, outfile)
+        if not args.no_log:
+            with open(Path(args.result_path, 'result_metrics.json'), 'w') as outfile:
+                json.dump(result_metrics, outfile)
