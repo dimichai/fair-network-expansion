@@ -1,21 +1,23 @@
 #!/bin/bash
 
-ARCHS=("mlp")
+ARCHS=("rnn")
 SEEDS=(20 42 150)
-ACTOR_LAY=(9)
-CRITIC_LAY=(2 3 4 5 6)
-# ACTOR_LAY=(7)
-# CRITIC_LAY=(6)
+# ACTOR_LAY=(9)
+# CRITIC_LAY=(2 3 4 5 6)
+ACTOR_LAY=(7)
+CRITIC_LAY=(6)
 # ACTOR_LR=(0.001 0.0005 0.0001 0.00005)
 # CRITIC_LR=(0.001 0.0005 0.0001 0.00005)
-ACTOR_LR=(0.001)
-CRITIC_LR=(0.001)
-EPOCH_MAX=60
+ACTOR_LR=(0.0001)
+CRITIC_LR=(0.0001)
+EPOCH_MAX=150
 
-
+start=`date +"%d-%b-%Y %T"`
+echo $start
 
 for arch in ${ARCHS[@]}
 do
+    echo -e "\n------------------- |$start|" >> hparamsearch_$arch.out
     for alay in ${ACTOR_LAY[@]}
     do
         for clay in ${CRITIC_LAY[@]}
