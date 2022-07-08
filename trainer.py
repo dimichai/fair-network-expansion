@@ -1,7 +1,7 @@
 import csv
 import datetime
 import json
-from actor_modules import PointerActor, MLPActor, CNNActor
+from actor_modules import PointerActor, MLPActor, CNNActor, RNNActor
 from environment import Environment
 import os
 from pathlib import Path
@@ -57,6 +57,11 @@ class Trainer(object):
         elif args.arch == "cnn":
             actor_module = CNNActor(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
             critic_module = CNNCritic(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
+        elif args.arch == "rnn":
+            actor_module = RNNActor(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
+            # critic_module = PointerCritic(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
+            critic_module = MLPCritic(args.static_size, args.dynamic_size, args.hidden_size,
+                                      3, environment.grid_size)
         else:
             raise NotImplementedError("{} not available as actor architecture.".format(args.actor))
         print(f"Number of trainable parameters actor-critic: {actor_module.nr_parameters} / {critic_module.nr_parameters}")
