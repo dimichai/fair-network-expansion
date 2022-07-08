@@ -144,4 +144,7 @@ def ggi(tour_idx: torch.Tensor, environment: Environment, weight, use_pct=True):
     group_rw, _ = torch.sort(group_rw)
     reward = torch.sum(group_rw * weights)
 
+    if use_pct:
+        reward *= 1000
+
     return reward
