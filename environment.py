@@ -144,6 +144,14 @@ class Environment(object):
         
         return od_mask
 
+    def get_groups_file(self, environment):
+        if environment == "diagonal_5x5" or environment == "dilemma_5x5":
+            return "groups.txt"
+        elif environment == "amsterdam" or environment == "xian":
+            return "price_groups_5.txt"
+        else:
+            return None
+
     def __init__(self, env_path, groups_file=None):
         """Initialise city environment.
 
@@ -153,10 +161,14 @@ class Environment(object):
         """
         super(Environment, self).__init__()
 
+        if not groups_file:
+            groups_file = self.get_groups_file(str(env_path).split("/")[-1])
+            print("No groups file provided. Trying to use the default groups file.")
+
         # read configuration file that contains basic parameters for the environment.
         config = configparser.ConfigParser()
         config.read(env_path / 'config.txt')
-        assert 'config' in config
+        assert 'config' in config, f"No config found! Please check if the environment {env_path} exists"
 
         # size of the grid
         self.grid_x_size = config.getint('config', 'grid_x_size')
