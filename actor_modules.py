@@ -107,7 +107,11 @@ class MLPActor(Actor):
         self.mlp = nn.Sequential(*([nn.Linear(static_size * num_gridblocks + dynamic_size * num_gridblocks, hidden_size),
                                    nn.ReLU()] +
                                    mlp +
-                                   [nn.Linear(hidden_size, num_gridblocks)]))
+                                   [nn.Linear(hidden_size, hidden_size)]))
+
+        self.encoder_attn = Attention(hidden_size).to(device)
+        self.static_hidden = nn.Conv1d(static_size, hidden_size, kernel_size=1)
+        self.dynamic_hidden = nn.Conv1d(dynamic_size, hidden_size, kernel_size=1)
 
     def forward(self, static, dynamic, *args):
         batch_size, static_size, num_gridblocks = static.shape
@@ -115,8 +119,11 @@ class MLPActor(Actor):
         # Construct the current state s_t
 
         state = self.construct_state(static, dynamic)
-        probs = self.mlp(state.reshape(batch_size, (num_gridblocks * static_size) + (num_gridblocks * dynamic_size)))
-        return probs
+        hidden = self.mlp(state.reshape(batch_size, (num_gridblocks * static_size) + (num_gridblocks * dynamic_size)))
+        static_hidden = self.static_hidden(static)
+        dynamic_hidden = self.dynamic_hidden(dynamic)
+        att = self.encoder_attn(static_hidden, dynamic_hidden, hidden)
+        return att
 
 
 class CNNActor(Actor):
