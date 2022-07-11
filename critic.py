@@ -80,9 +80,14 @@ class MLPCritic(Critic):
     def __init__(self, static_size, dynamic_size, hidden_size, nr_layers=4, num_gridblocks=25):
         super(MLPCritic, self).__init__()
 
+        # Reduce size from (N^2 * (static_size + dynamic_size)) to (N^2)
+        self.cnn = nn.Sequential(*[nn.Conv1d(static_size + dynamic_size, static_size + dynamic_size, kernel_size=1),
+                                   nn.ReLU(),
+                                   nn.Conv1d(static_size + dynamic_size, 1, kernel_size=1)])
+
         mlp = [[nn.Linear(hidden_size, hidden_size), nn.ReLU()] for i in range(nr_layers - 2)]
         mlp = [it for block in mlp for it in block]
-        self.mlp = nn.Sequential(*([nn.Linear(static_size * num_gridblocks + dynamic_size * num_gridblocks, hidden_size),
+        self.mlp = nn.Sequential(*([nn.Linear(num_gridblocks, hidden_size),
                                    nn.ReLU()] +
                                    mlp +
                                    [nn.Linear(hidden_size, 1)]))
@@ -92,12 +97,11 @@ class MLPCritic(Critic):
                 nn.init.xavier_uniform_(p)
 
     def forward(self, static, dynamic, hidden_size, grid_x_size, grid_y_size):
-        static = F.dropout(static, 0.3, training=True)
-        dynamic = F.dropout(dynamic, 0.3, training=True)
         batch_size, static_size, num_gridblocks = static.shape
         _, dynamic_size, _ = dynamic.shape
         state = self.construct_state(static, dynamic)
-        probs = self.mlp(state.reshape(batch_size, num_gridblocks * static_size + num_gridblocks * dynamic_size))
+        out = self.cnn(state)
+        probs = self.mlp(out)
         return probs
 
 
