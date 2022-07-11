@@ -102,12 +102,16 @@ class MLPActor(Actor):
             raise ValueError(':param dynamic_size: must be > 0, even if the '
                              'problem has no dynamic elements')
 
+        # Reduce size from (N^2 * (static_size + dynamic_size)) to (N^2)
+        self.cnn = nn.Sequential(*[nn.Conv1d(static_size + dynamic_size, static_size + dynamic_size, kernel_size=1),
+                                   nn.ReLU(),
+                                   nn.Conv1d(static_size + dynamic_size, 1, kernel_size=1)])
+
         mlp = [[nn.Linear(hidden_size, hidden_size), nn.ReLU()] for i in range(nr_layers - 2)]
         mlp = [it for block in mlp for it in block]
-        self.mlp = nn.Sequential(*([nn.Linear(static_size * num_gridblocks + dynamic_size * num_gridblocks, hidden_size),
+        self.mlp = nn.Sequential(*([nn.Linear(num_gridblocks, hidden_size),
                                    nn.ReLU()] +
-                                   mlp +
-                                   [nn.Linear(hidden_size, hidden_size)]))
+                                   mlp))
 
         self.encoder_attn = Attention(hidden_size).to(device)
         self.static_hidden = nn.Conv1d(static_size, hidden_size, kernel_size=1)
@@ -119,7 +123,8 @@ class MLPActor(Actor):
         # Construct the current state s_t
 
         state = self.construct_state(static, dynamic)
-        hidden = self.mlp(state.reshape(batch_size, (num_gridblocks * static_size) + (num_gridblocks * dynamic_size)))
+        out = self.cnn(state).squeeze(dim=1)
+        hidden = self.mlp(out)
         static_hidden = self.static_hidden(static)
         dynamic_hidden = self.dynamic_hidden(dynamic)
         att = self.encoder_attn(static_hidden, dynamic_hidden, hidden)
