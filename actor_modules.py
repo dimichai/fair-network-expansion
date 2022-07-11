@@ -103,28 +103,33 @@ class MLPActor(Actor):
                              'problem has no dynamic elements')
 
         # Reduce size from (N^2 * (static_size + dynamic_size)) to (N^2)
-        self.cnn = nn.Sequential(*[nn.Conv1d(static_size + dynamic_size, static_size + dynamic_size, kernel_size=1),
-                                   nn.ReLU(),
-                                   nn.Conv1d(static_size + dynamic_size, 1, kernel_size=1)])
-
-        mlp = [[nn.Linear(hidden_size, hidden_size), nn.ReLU()] for i in range(nr_layers - 2)]
+        downsample = [nn.Conv1d(static_size + dynamic_size, static_size + dynamic_size, kernel_size=1),
+                      nn.ReLU(),
+                      nn.Conv1d(static_size + dynamic_size, 1, kernel_size=1),
+                      nn.ReLU(),
+                      nn.Flatten(start_dim=1, end_dim=2),
+                      nn.Linear(num_gridblocks, hidden_size),
+                      nn.ReLU()]
+        mlp = [[nn.Linear(hidden_size, hidden_size), nn.ReLU()] for i in range(nr_layers - 1)]
         mlp = [it for block in mlp for it in block]
-        self.mlp = nn.Sequential(*([nn.Linear(num_gridblocks, hidden_size),
-                                   nn.ReLU()] +
-                                   mlp))
+
+        self.downsample = nn.Sequential(*downsample)
+        self.mlp = nn.Sequential(*mlp)
 
         self.encoder_attn = Attention(hidden_size).to(device)
         self.static_hidden = nn.Conv1d(static_size, hidden_size, kernel_size=1)
         self.dynamic_hidden = nn.Conv1d(dynamic_size, hidden_size, kernel_size=1)
 
-    def forward(self, static, dynamic, *args):
-        batch_size, static_size, num_gridblocks = static.shape
-        _, dynamic_size, _ = dynamic.shape
-        # Construct the current state s_t
+        for p in self.parameters():
+            if len(p.shape) > 1:
+                nn.init.kaiming_uniform_(p)
 
+    def forward(self, static, dynamic, *args):
         state = self.construct_state(static, dynamic)
-        out = self.cnn(state).squeeze(dim=1)
+        out = self.downsample(state)
         hidden = self.mlp(out)
+
+        # Attention
         static_hidden = self.static_hidden(static)
         dynamic_hidden = self.dynamic_hidden(dynamic)
         att = self.encoder_attn(static_hidden, dynamic_hidden, hidden)
@@ -170,46 +175,49 @@ class RNNActor(Actor):
         self.num_gridblocks = num_gridblocks
         self.hidden_size = hidden_size
 
+        
+        # Reduce size from (N^2 * (static_size + dynamic_size)) to (N^2)
+        downsample = [nn.Conv1d(static_size + dynamic_size, static_size + dynamic_size, kernel_size=1),
+                      nn.ReLU(),
+                      nn.Conv1d(static_size + dynamic_size, 1, kernel_size=1),
+                      nn.ReLU(),
+                      nn.Flatten(start_dim=1, end_dim=2),
+                      nn.Linear(num_gridblocks, hidden_size),
+                      nn.ReLU()]
+        self.downsample = nn.Sequential(*downsample)
+        self.rnn = nn.RNN(hidden_size, hidden_size, nonlinearity="relu", batch_first=True)
+
+        # Attention
         self.static_encoder = nn.Conv1d(static_size, hidden_size, kernel_size=1)
         self.dynamic_encoder = nn.Conv1d(dynamic_size, hidden_size, kernel_size=1)
+        self.encoder_attn = Attention(hidden_size).to(device)
 
-        self.drop_hh = nn.Dropout(p=0.1)
-
-        #MLP
-        self.mlp = nn.Linear(static_size * num_gridblocks + dynamic_size * num_gridblocks, hidden_size)
-        #ENC-DEC
-        # self.mlp = nn.Linear(hidden_size * 2 * num_gridblocks, hidden_size)
-        self.rnn = nn.RNN(hidden_size, hidden_size, nonlinearity="tanh", batch_first=True)
-        self.final = nn.Linear(hidden_size, num_gridblocks)
+        for p in self.parameters():
+            if len(p.shape) > 1:
+                nn.init.kaiming_uniform_(p)
 
     def init_foward(self, static, dynamic, *args):
         self.hidden = torch.zeros(1, self.hidden_size, requires_grad=True).to(device)
-
-    #     self.static_hidden = self.static_encoder(static)  # static: Array of size (batch_size, feats, num_cities)
-    #     self.dynamic_hidden = self.dynamic_encoder(dynamic)
+        self.static_hidden = self.static_encoder(static)  # static: Array of size (batch_size, feats, num_gridblocks)
 
     def forward(self, static, dynamic, *args):
-        batch_size, static_size, _ = static.shape
-        _, dynamic_size, _ = dynamic.shape
 
-        # MLP
+        # Downsample state space
         state = self.construct_state(static, dynamic)
-        state = state.reshape(batch_size, static_size * self.num_gridblocks + dynamic_size * self.num_gridblocks)
-        mlp = self.mlp(state)
+        out = self.downsample(state).squeeze(dim=1)
 
-        # ENC-DEC
-        # state = self.construct_state(self.static_hidden, self.dynamic_hidden)
-        # state = state.reshape(batch_size, self.hidden_size * 2 * self.num_gridblocks)
-        # mlp = self.mlp(state)
-        # print(state.shape)
-        hidden = self.drop_hh(self.hidden)
-        rnn, self.hidden = self.rnn(mlp, hidden)
+        # Apply RNN
+        rnn, self.hidden = self.rnn(out, self.hidden)
         if rnn.dim() == 2:
             rnn = rnn.unsqueeze(dim=1)
-        return self.final(rnn[:, -1, :])
 
-    # def update_dynamic(self, static, dynamic, *args):
-    #     self.dynamic_hidden = self.dynamic_encoder(dynamic)
+        # Apply attention
+        last_hh = rnn[:, -1, :]
+        att = self.encoder_attn(self.static_hidden, self.dynamic_hidden, last_hh)
+        return att
+
+    def update_dynamic(self, static, dynamic, *args):
+        self.dynamic_hidden = self.dynamic_encoder(dynamic)
 
 
 class Attention(nn.Module):
