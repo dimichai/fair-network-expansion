@@ -92,6 +92,8 @@ class MLPCritic(Critic):
                 nn.init.xavier_uniform_(p)
 
     def forward(self, static, dynamic, hidden_size, grid_x_size, grid_y_size):
+        static = F.dropout(static, 0.3, training=True)
+        dynamic = F.dropout(dynamic, 0.3, training=True)
         batch_size, static_size, num_gridblocks = static.shape
         _, dynamic_size, _ = dynamic.shape
         state = self.construct_state(static, dynamic)
