@@ -21,6 +21,8 @@ It is also possible to run the MLP architecture on the Xian environment:
 python main.py --seed 20 --environment xian --groups_file price_groups_5.txt --arch mlp --actor_mlp_layers 6 --critic_mlp_layers 5 --epoch_max 300 --test
 ```
 
+Adding attention to this model is done by changing `--arch mlp` to `--arch mlp-att`.
+
 ### CNN 
 The CNN architecture is less modular, because it is harder to make the convolution sizes, number of layers, and grid size "click". To train and test a CNN model on the diagonal 5x5 grid run:
 ```
@@ -32,3 +34,10 @@ To run the CNN on the Xian environment, design a network that is able to process
 python main.py --seed 20 --environment xian --groups_file price_groups_5.txt --arch cnn --epoch_max 3500 --test
 ```
 (There might be an old Xian CNN implementation somewhere in the commit history)
+
+### RNN and Attention
+The RNN achitecture can be run as follows:
+```
+python main.py --seed 20 --environment diagonal_5x5 --groups_file groups.txt --arch rnn --epoch_max 60 --test
+```
+Adding attention to this model is done by changing `--arch rnn` to `--arch rnn-att`.

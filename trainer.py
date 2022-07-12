@@ -1,7 +1,7 @@
 import csv
 import datetime
 import json
-from actor_modules import PointerActor, MLPActor, CNNActor
+from actor_modules import RNNActor, RNNActor_Attention, MLPActor_Attention, PointerActor, MLPActor, CNNActor
 from environment import Environment
 import os
 from pathlib import Path
@@ -54,11 +54,22 @@ class Trainer(object):
                                     args.actor_mlp_layers, environment.grid_size)
             critic_module = MLPCritic(args.static_size, args.dynamic_size, args.hidden_size,
                                       args.critic_mlp_layers, environment.grid_size)
+        elif args.arch == "mlp-att":
+            actor_module = MLPActor_Attention(args.static_size, args.dynamic_size, args.hidden_size,
+                                    args.actor_mlp_layers, environment.grid_size)
+            critic_module = PointerCritic(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
         elif args.arch == "cnn":
             actor_module = CNNActor(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
             critic_module = CNNCritic(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
+        elif args.arch == "rnn":
+            actor_module = RNNActor(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
+            critic_module = MLPCritic(args.static_size, args.dynamic_size, args.hidden_size,
+                                      args.critic_mlp_layers, environment.grid_size)
+        elif args.arch == "rnn-att":
+            actor_module = RNNActor_Attention(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
+            critic_module = PointerCritic(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
         else:
-            raise NotImplementedError("{} not available as actor architecture.".format(args.actor))
+            raise NotImplementedError("{} not available as actor architecture.".format(args.arch))
         print(f"Number of trainable parameters actor-critic: {actor_module.nr_parameters} / {critic_module.nr_parameters}")
         self.actor = DRL4Metro(actor_module,
                                update_dynamic,
