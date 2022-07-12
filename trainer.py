@@ -138,13 +138,13 @@ class Trainer(object):
                         ses_reward = discounted_development_utility(tour_idx, self.environment)
                         reward = args.ses_weight * ses_reward + (1-args.ses_weight) * reward
                 elif args.reward == 'group':
-                    reward = group_utility(tour_idx, self.environment, args.var_lambda)
+                    reward = group_utility(tour_idx, self.environment, args.var_lambda, use_pct=not args.use_abs)
                 elif args.reward == 'ai_economist':
-                    reward = group_utility(tour_idx, self.environment, mult_gini=True)
+                    reward = group_utility(tour_idx, self.environment, mult_gini=True, use_pct=not args.use_abs)
                 elif args.reward == 'rawls':
-                    reward = lowest_quintile_utility(tour_idx, self.environment)
+                    reward = lowest_quintile_utility(tour_idx, self.environment, use_pct=not args.use_abs)
                 elif args.reward == 'ggi':
-                    reward = ggi(tour_idx, self.environment, args.ggi_weight)
+                    reward = ggi(tour_idx, self.environment, args.ggi_weight, use_pct=not args.use_abs)
 
                 social_equity_list.append(ses_reward.item())
 
