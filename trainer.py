@@ -271,26 +271,38 @@ class Trainer(object):
         nz = plot_grid.nonzero()
         avg_gen_line = np.stack((nz[0], nz[1]), axis=-1)
 
-        # Evaluate OD metrics
+        # Evaluate metrics
         satisfied_ods = np.zeros(len(gen_lines))
         satisfied_group_ods = np.zeros((len(gen_lines), len(self.environment.group_od_mx))) # make an array of dimensions lines x groups to store ods by line by group
+        # avg distance of every square to the nearest line stop.
+        distances = np.zeros(len(gen_lines))
+        group_distances = np.zeros((len(gen_lines), len(self.environment.group_od_mx)))
         for i, line in enumerate(gen_lines):
+            # Evaluate ODs
             sat_od_mask = self.environment.satisfied_od_mask(line)
             satisfied_ods[i] = (sat_od_mask * self.environment.od_mx).sum().item()
-            
+
+            # Evaluate average distance to nearest public transport station.
+            # Manhattan distance between each grid cell and the average generated line.
+            line_g = self.environment.vector_to_grid(line).transpose(0, 1)
+            dist = torch.cdist(self.environment.grid_indices.float(), torch.tensor(line_g).float(), p=1)
+            min_dist = dist.min(axis=1)[0].reshape_as(self.environment.grid_groups)
+            # average distance of all grids with an assigned group (not NaN)
+            distances[i] = (~self.environment.grid_groups.isnan() * min_dist).mean()
+
             if self.environment.group_od_mx:
                 for j, g_od in enumerate(self.environment.group_od_mx):
                     satisfied_group_ods[i, j] = (g_od * sat_od_mask).sum().item()
+
+                    group_distances[i, j] = ((self.environment.grid_groups == self.environment.groups[j]) * min_dist).mean()
 
         mean_sat_od = satisfied_ods.mean()
         mean_sat_od_pct = mean_sat_od / (self.environment.od_mx.sum() / 2)
         mean_sat_od_by_group = satisfied_group_ods.mean(axis=0)
         mean_sat_od_by_group_pct = mean_sat_od_by_group / [g.cpu().sum()/2 for g in self.environment.group_od_mx]
         total_group_od = sum([g.sum()/2 for g in self.environment.group_od_mx])
-        # print average satisfied flows and the satisfied share
-        # total od matrix sum is divided by 2 because it is symmetrical.
-        print(f'Average satisfied origin destination flows: {mean_sat_od} ({mean_sat_od_pct})')
-        print(f'Average satisfied origin destination flows by group: {mean_sat_od_by_group} ({mean_sat_od_by_group_pct})')
+        mean_distance = distances.mean()
+        mean_group_distance = group_distances.mean(axis=0)
 
         # Plot bars of satisfied ODs by group and overall
         fig, axs = plt.subplots(1, 2, figsize=(15, 5))
@@ -315,7 +327,9 @@ class Trainer(object):
             'mean_sat_group_od': sum(mean_sat_od_by_group).item(),
             'mean_sat_group_od_pct': (sum(mean_sat_od_by_group)/total_group_od).item(),
             'group_gini': group_gini,
-            'group_pct_gini': group_pct_gini
+            'group_pct_gini': group_pct_gini,
+            'mean_distance': mean_distance,
+            'mean_group_distance': mean_group_distance.tolist()
         }
         
         if not args.no_log:
