@@ -9,10 +9,13 @@ import pandas as pd
 from environment import Environment
 import numpy as np
 plt.rcParams.update({'font.size': 18})
+import os
 
 
 #%%
 def prepare_metrics_df(models: List):
+    # args = defaultdict(list)
+    args = pd.DataFrame()
     metrics = defaultdict(list)
     for model_path in models:
         with open(Path('result', model_path, 'result_metrics.json')) as json_file:
@@ -26,8 +29,24 @@ def prepare_metrics_df(models: List):
             metrics['group_gini'].append(data['group_gini'])
             metrics['group_pct_gini'].append(data['group_pct_gini'])
             metrics['group_pct_diff'].append(1-abs(data['mean_sat_od_by_group_pct'][0] - data['mean_sat_od_by_group_pct'][1]))
+            metrics['mean_distance'].append(data['mean_distance'])
+            metrics['mean_group_distance'].append(data['mean_group_distance'])
+        
+        argpath = Path('result', model_path, 'args.txt')
+        if argpath.is_file():
+            with open(argpath) as json_file:
+                data = json.load(json_file)
+                data['model'] = model_path
+                args = pd.concat([args, pd.DataFrame(data, index=[0])])
+                # args = args.append(data, ignore_index=True)
+                # for k in data.keys():
+                    # args[k].append(data[k])
+                    # args.append(data[k])
+            
     
-    return pd.DataFrame(metrics)
+    df_metrics = pd.DataFrame(metrics)
+    # df_args = pd.DataFrame(args)
+    return pd.merge(args, df_metrics, how='left', on='model')
 
 #%% PLOT DILEMMA RESULTS
 # Paths of models to evalute
@@ -36,7 +55,7 @@ def prepare_metrics_df(models: List):
 models = ['dilemma_5x5_20220503_13_58_29.563962', 'dilemma_5x5_20220503_17_47_23.454216', 'dilemma_5x5_20220419_13_22_47.509481', 
             'dilemma_5x5_20220418_17_43_08.080415', 'dilemma_5x5_20220503_15_18_36.055557', 'dilemma_5x5_20220503_16_36_50.970871']
 metrics = prepare_metrics_df(models)
-#%%
+
 # To create a scatterplot with different custom markers.
 # From https://github.com/matplotlib/matplotlib/issues/11155
 def mscatter(x,y,ax=None, m=None, **kw):
@@ -139,4 +158,14 @@ plt.legend(loc='best')
 plt.show()
 plt.savefig('./')
 
+# %% PLOT AMSTERDAM RESULTS
+# models = ['amsterdam_20220708_11_21_23.191428']
+models = []
+paths  = [ f.path for f in os.scandir('./result') if f.is_dir() ]
+for p in paths:
+    if 'amsterdam' in p:
+        models.append(p.split('/')[-1])
+
+metrics = prepare_metrics_df(models)
+metrics.to_csv('./amsterdam_results.csv', index=False)
 # %%
