@@ -143,7 +143,7 @@ class Trainer(object):
         average_reward_list, actor_loss_list, critic_loss_list, average_od_list, average_Ac_list = [], [], [], [], []
         # best_params = None
         best_reward = 0
-
+        early_stopping = 0
         static = self.environment.static
         dynamic = torch.zeros((1, args.dynamic_size, self.environment.grid_size),
                               device=device).float()  # size with batch
@@ -240,6 +240,19 @@ class Trainer(object):
 
                     torch.save(self.actor.state_dict(), save_dir / 'actor.pt')
                     torch.save(self.critic.state_dict(), save_dir / 'critic.pt')
+            
+            # increment early stopping every time that the reward was the same as the previous epoch
+            if epoch > 10 and avg_reward <= average_reward_list[-2]:
+                early_stopping += 1
+            else:  # set to zero if they are not the same
+                early_stopping = 0
+
+            # stop if the avg reward is 10 times the same
+            if early_stopping > 9:
+                print("Early stopping!")
+                args.epoch_max = epoch
+                break
+
 
         if not args.no_log:
             with open(save_dir / 'reward_actloss_criloss.txt', 'w') as f:
