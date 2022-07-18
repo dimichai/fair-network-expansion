@@ -268,21 +268,26 @@ class RNNActor_Attention(Actor):
         self.dynamic_hidden = self.dynamic_encoder(dynamic)
 
 class CNNActor(Actor):
-    def __init__(self, static_size, dynamic_size, hidden_size, num_gridblocks=25, *args):
+    def __init__(self, static_size, dynamic_size, hidden_size, nr_layers=5, num_gridblocks=25, *args):
         super(CNNActor, self).__init__()
         self.grid_side_length = int(np.sqrt(num_gridblocks))
         assert self.grid_side_length ** 2 == num_gridblocks, "Square root error {} != {}^2. Please review this code".format(num_gridblocks, self.grid_side_length)
         assert num_gridblocks == 25, "Implementation for 5x5 grid."
 
-        conv_l = [nn.Conv2d(static_size + dynamic_size, 8, kernel_size=3, padding=1), nn.ReLU(),
-                  nn.Conv2d(8, 16, kernel_size=3, padding=1), nn.ReLU(),
-                  nn.Conv2d(16, 32, kernel_size=3), nn.ReLU(),
-                  nn.Conv2d(32, 64, kernel_size=3), nn.ReLU()]
+        conv_l = [nn.Conv2d(static_size + dynamic_size, 16, kernel_size=3, padding=1), nn.ReLU(),
+                  nn.Conv2d(16, 32, kernel_size=3, padding=1), nn.ReLU(),
+                  nn.Conv2d(32, 64, kernel_size=3), nn.ReLU(),
+                  nn.Conv2d(64, 128, kernel_size=3), nn.ReLU(),
+                  nn.Flatten(start_dim=1)]
+        mlp = [[nn.Linear(hidden_size, hidden_size), nn.ReLU()] for _ in range(nr_layers - 1)]
+        mlp = [it for block in mlp for it in block]
 
         self.cnn = nn.Sequential(*conv_l)
-        self.mlp = nn.Sequential(*[nn.Linear(64, hidden_size),
-                                   nn.ReLU(),
-                                   nn.Linear(hidden_size, num_gridblocks)])
+        self.mlp = nn.Sequential(*mlp, nn.Linear(hidden_size, num_gridblocks))
+
+        for _, p in self.named_parameters():
+            if len(p.shape) > 1:
+                nn.init.kaiming_uniform_(p)
 
     def forward(self, static, dynamic, *args):
         batch_size, static_size, _ = static.shape
@@ -290,7 +295,7 @@ class CNNActor(Actor):
 
         state = self.construct_state(static, dynamic)
         cnn = self.cnn(state.view(batch_size, static_size + dynamic_size, self.grid_side_length, self.grid_side_length))
-        mlp = self.mlp(cnn.squeeze(dim=2).squeeze(dim=2))
+        mlp = self.mlp(cnn)
 
         return mlp
 

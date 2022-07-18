@@ -59,8 +59,8 @@ class Trainer(object):
                                     args.actor_mlp_layers, environment.grid_size)
             critic_module = PointerCritic(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
         elif args.arch == "cnn":
-            actor_module = CNNActor(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
-            critic_module = CNNCritic(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
+            actor_module = CNNActor(args.static_size, args.dynamic_size, args.hidden_size, args.actor_mlp_layers, environment.grid_size)
+            critic_module = CNNCritic(args.static_size, args.dynamic_size, args.hidden_size, args.actor_mlp_layers, environment.grid_size)
         elif args.arch == "rnn":
             actor_module = RNNActor(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
             critic_module = MLPCritic(args.static_size, args.dynamic_size, args.hidden_size,

@@ -100,18 +100,20 @@ class MLPCritic(Critic):
 
 
 class CNNCritic(Critic):
-    def __init__(self, static_size, dynamic_size, hidden_size, num_gridblocks=25, *args):
+    def __init__(self, static_size, dynamic_size, hidden_size, nr_layers=4, num_gridblocks=25, *args):
         super(CNNCritic, self).__init__()
         self.grid_side_length = int(np.sqrt(num_gridblocks))
-        conv_l = [nn.Conv2d(static_size + dynamic_size, 8, kernel_size=3, padding=1), nn.ReLU(),
-                  nn.Conv2d(8, 16, kernel_size=3, padding=1), nn.ReLU(),
-                  nn.Conv2d(16, 32, kernel_size=3), nn.ReLU(),
-                  nn.Conv2d(32, 64, kernel_size=3), nn.ReLU()]
+        conv_l = [nn.Conv2d(static_size + dynamic_size, 16, kernel_size=3, padding=1), nn.ReLU(),
+                  nn.Conv2d(16, 32, kernel_size=3, padding=1), nn.ReLU(),
+                  nn.Conv2d(32, 64, kernel_size=3), nn.ReLU(),
+                  nn.Conv2d(64, 128, kernel_size=3), nn.ReLU(),
+                  nn.Flatten(start_dim=1)]
+
+        mlp = [[nn.Linear(hidden_size, hidden_size), nn.ReLU()] for _ in range(nr_layers - 1)]
+        mlp = [it for block in mlp for it in block]
 
         self.cnn = nn.Sequential(*conv_l)
-        self.mlp = nn.Sequential(*[nn.Linear(64, hidden_size),
-                                   nn.ReLU(),
-                                   nn.Linear(hidden_size, 1)])
+        self.mlp = nn.Sequential(*mlp, nn.Linear(hidden_size, 1))
 
     def forward(self, static, dynamic, *args):
         batch_size, static_size, num_gridblocks = static.shape
@@ -119,6 +121,6 @@ class CNNCritic(Critic):
 
         state = self.construct_state(static, dynamic)
         cnn = self.cnn(state.view(batch_size, static_size + dynamic_size, self.grid_side_length, self.grid_side_length))
-        mlp = self.mlp(cnn.squeeze(dim=2).squeeze(dim=2))
+        mlp = self.mlp(cnn)
 
         return mlp
