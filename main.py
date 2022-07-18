@@ -54,6 +54,7 @@ if __name__ == "__main__":
     parser.add_argument('--reward', default='weighted', type=str)
     parser.add_argument('--ses_weight', default=0, type=float)  # weight to assign to the socio-economic status (equity)reward, only works for --reward=weighted
     parser.add_argument('--var_lambda', default=0, type=float)  # weight to assign to the variance of the satisfied OD among groups, only works for --reward=group
+    parser.add_argument('--reward_scaling_fn', default=None, type=str, choices=["linear", "inverse"])
 
     parser.add_argument('--groups_file', default=None, type=str)  # file that contains group membership of each grid square (e.g. when each square belongs to a certain income bin).
 
@@ -63,7 +64,7 @@ if __name__ == "__main__":
 
     if args.seed:
         set_seed(args.seed)
-    environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file)
+    environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file, reward_scaling_fn=args.reward_scaling_fn)
     constraints = ForwardConstraints(environment.grid_x_size, environment.grid_y_size, environment.existing_lines_full, environment.grid_to_vector)
     trainer = Trainer(environment, constraints, args)
 

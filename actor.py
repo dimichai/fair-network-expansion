@@ -208,5 +208,150 @@ class DRL4Metro(nn.Module):
 
         return tour_idx, tour_logp
 
+class DRL4Metro_reworked(nn.Module):
+    """Same as above but without directionality constraints or mask
+    """
+
+    def __init__(self, actor, update_fn = None, v_to_g_fn = None):
+        super(DRL4Metro_reworked, self).__init__()
+
+        self.update_fn = update_fn
+        self.v_to_g_fn = v_to_g_fn
+
+        # Define the encoder & decoder models
+        self.actor = actor
+
+    def forward(self, static, dynamic, station_num_lim, budget=None, initial_direct = None,line_unit_price = None, station_price = None,
+                decoder_input=None, last_hh=None):
+        """
+        Parameters
+        ----------
+        static: Array of size (batch_size, feats, num_cities)
+            Defines the elements to consider as static. For the TSP, this could be
+            things like the (x, y) coordinates, which won't change
+        dynamic: Array of size (batch_size, feats, num_cities)
+            Defines the elements to consider as dynamic. For the VRP, this can be
+            things like the (load, demand) of each city. If there are no dynamic
+            elements, this can be set to None
+        decoder_input: Array of size (batch_size, num_feats)
+            Defines the outputs for the decoder. Currently, we just use the
+            static elements (e.g. (x, y) coordinates), but this can technically
+            be other things as well
+        last_hh: Array of size (batch_size, num_hidden)
+            Defines the last hidden state for the RNN
+        """
+
+        def each_line_cost(grid_index1, exist_agent_last_grid):
+            # this function compute the cost for building each line
+            need1 = grid_index1 - exist_agent_last_grid
+            need2 = need1.pow(2)
+            need3 = need2.sum(dim=1).float()
+            dis = need3.sqrt().data.cpu().item()
+            per_line_cost = line_unit_price * dis
+            return per_line_cost
+
+        batch_size, _, sequence_size = static.size()
+
+        if budget:
+            available_fund = budget
+
+        if decoder_input is not None:
+            self.actor.decoder_input = decoder_input
+
+        specify_original_station = 0
+        # For this problem, there are no dynamic elements - so dynamic tensor is zeros.
+        if dynamic.sum():
+            raise NotImplementedError("Pls go away.")
+            specify_original_station = 1
+
+            non_zero_index = torch.nonzero(dynamic)
+            ptr0 = non_zero_index[0][2]
+            ptr = ptr0.view(1)
+
+            grid_index1 = self.v_to_g_fn(ptr.data[0])
+            agent_current_index = ptr.data.cpu().numpy()[0]
+            agent_grids = grid_index1
+            exist_agent_last_grid = grid_index1.view(1, 2)  # grid_x,grid_y
+
+            self.direction_vector, vector_index_allow = self.vector_allow_fn(agent_current_index, grid_index1,
+                                                                             exist_agent_last_grid, self.direction_vector)
+
+            if self.mask_fn is not None: 
+                if vector_index_allow.size()[0]: 
+                    mask = self.mask_fn(vector_index_allow).detach()
+                else:
+                    raise Exception('The initial station is not appropriate!!!')
+            else:
+                mask = torch.ones(batch_size, sequence_size, device=device)
+        else:
+            # Always use a mask - if no function is provided, we don't update it
+            ptr = None
+
+        # Structures for holding the output sequences
+        tour_idx, tour_logp = [], []
+        max_steps = station_num_lim
+
+        if specify_original_station:  # add the initial station index
+            tour_idx.append(ptr.data.unsqueeze(1))
+
+        self.actor.init_foward(static, dynamic)
+
+        count_num = 0
+        for _ in range(max_steps):
+            count_num = count_num + 1
+
+            if budget and available_fund <= 0:
+                break
+
+            self.actor.update_dynamic(static, dynamic, ptr)
+            probs = self.actor.forward(static, dynamic)
+            probs = nn.functional.softmax(probs, dim=1)
+
+            # When training, sample the next step according to its probability.
+            # During testing, we can take the greedy approach and choose highest
+            if self.training:
+                # print('####################  training')
+                m = torch.distributions.Categorical(probs)
+
+                # Sometimes an issue with Categorical & sampling on GPU; See:
+                # https://github.com/pemami4911/neural-combinatorial-rl-pytorch/issues/5
+                ptr = m.sample()
+
+                logp = m.log_prob(ptr)
+            else:
+                # print('!!!!!!!!!!!!!!!!!!!!  Greedy')
+                prob, ptr = torch.max(probs, 1)  # Greedy
+                logp = prob.log()
+
+            # After visiting a node update the dynamic representation
+            # Change the vector index to grid index
+            grid_index1 = self.v_to_g_fn(ptr.data[0])   # CUDA  ptr: current grid selected by network
+            agent_current_index = ptr.data.cpu().numpy()[0]  # int
+
+            # Got the agent grid index sequence
+            if count_num == 1 and specify_original_station == 0:
+                agent_grids = grid_index1
+                exist_agent_last_grid = grid_index1.view(1, 2)  # grid_x,grid_y
+            else:
+                exist_agent_last_grid = agent_grids[-1].view(1, 2)
+                agent_grids = torch.cat((agent_grids, grid_index1), dim=0)
+
+            tour_logp.append(logp.unsqueeze(1))  # logp.unsqueeze(1)
+            tour_idx.append(ptr.data.unsqueeze(1))  # ptr.data.unsqueeze(1)
+
+            # After visiting a node update the dynamic representation
+            if self.update_fn is not None:
+                dynamic = self.update_fn(dynamic, agent_current_index)   # dynamic.requires_grad = False
+
+            # budget
+            if budget:
+                per_line_cost = each_line_cost(grid_index1, exist_agent_last_grid)
+                available_fund = available_fund - per_line_cost - station_price
+
+        tour_idx = torch.cat(tour_idx, dim=1)  # (batch_size, seq_len)  tour_idx.requires_grad = False
+        tour_logp = torch.cat(tour_logp, dim=1)  # (batch_size, seq_len)
+
+        return tour_idx, tour_logp
+
 if __name__ == '__main__':
     raise Exception('Cannot be called from main')

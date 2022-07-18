@@ -9,7 +9,7 @@ import time
 import numpy as np
 import torch
 import torch.optim as optim
-from actor import DRL4Metro
+from actor import DRL4Metro, DRL4Metro_reworked
 from constraints import Constraints
 from critic import PointerCritic, MLPCritic, CNNCritic
 import constants
@@ -60,11 +60,16 @@ class Trainer(object):
         else:
             raise NotImplementedError("{} not available as actor architecture.".format(args.actor))
         print(f"Number of trainable parameters actor-critic: {actor_module.nr_parameters} / {critic_module.nr_parameters}")
-        self.actor = DRL4Metro(actor_module,
-                               update_dynamic,
-                               environment.update_mask,
-                               v_to_g_fn=environment.vector_to_grid,
-                               vector_allow_fn=constraints.allowed_vector_indices).to(device)
+        if args.reward_scaling_fn == None:
+            self.actor = DRL4Metro(actor_module,
+                                update_dynamic,
+                                environment.update_mask,
+                                v_to_g_fn=environment.vector_to_grid,
+                                vector_allow_fn=constraints.allowed_vector_indices).to(device)
+        else:
+            self.actor = DRL4Metro_reworked(actor_module,
+                                update_dynamic,
+                                v_to_g_fn=environment.vector_to_grid).to(device)
 
         self.critic = critic_module.to(device)
 
@@ -145,7 +150,7 @@ class Trainer(object):
                                                  line_unit_price=args.line_unit_price, station_price=args.station_price,
                                                  decoder_input=None, last_hh=None)
 
-                reward = od_utility(tour_idx, self.environment)
+                reward = od_utility(tour_idx, self.environment, args.reward_scaling_fn != None)
                 od_list.append(reward.item())
                 ses_reward = torch.zeros(1)
                 if args.reward == 'weighted':

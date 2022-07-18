@@ -1,12 +1,11 @@
-from os import environ
-from re import L
 from environment import Environment
 import torch
 from utils import gini_tensor, gini
+from typing import Callable
 
 from constants import device
 
-def od_utility(tour_idx: torch.Tensor, environment: Environment):
+def od_utility(tour_idx: torch.Tensor, environment: Environment, scaled=False):
     """Total sum of satisfied Origin Destination flows.
 
     Args:
@@ -16,10 +15,16 @@ def od_utility(tour_idx: torch.Tensor, environment: Environment):
     Returns:
         torch.Tensor: sum of satisfied Origin Destination Flows.
     """
-    sat_od_mask = environment.satisfied_od_mask(tour_idx)
+    if scaled == True:
+        sat_od_mask = environment.matrix_reward_scaling(tour_idx)
+    else:
+        sat_od_mask = environment.satisfied_od_mask(tour_idx)
     reward = (environment.od_mx * sat_od_mask).sum().to(device)
     
     return reward
+
+def matrix_reward_scaling(tour_idx: torch.Tensor, environment: Environment, scaling_fn: Callable):
+    pass
 
 def group_utility(tour_idx: torch.Tensor, environment: Environment, var_lambda=0, use_pct=True, mult_gini=False):
     """Sums total satisfied Origin Destination flows of all groups 

@@ -66,7 +66,9 @@ class Environment(object):
 
             return torch.cat((grid_x, grid_y), dim=0).view(1, 2)
 
-        return torch.cat((grid_x, grid_y), dim=0)
+        # grid_x = grid_x.unsqueeze(dim=0)
+        # grid_y = grid_y.unsqueeze(dim=0)
+        return torch.cat((grid_x, grid_y), dim=0)#.transpose(-1, -2)
         
     def process_lines(self, lines):
         """Creates a list of tensors for each line, from given grid indices. Used to create line/segment representations of metro lines.
@@ -143,6 +145,28 @@ class Environment(object):
         od_mask[sat_od_pairs[:, 0], sat_od_pairs[:, 1]] = 1
         
         return od_mask
+    
+
+    def matrix_reward_scaling(self, tour_idx: torch.Tensor):
+        tour_idx = tour_idx[0].flatten()
+        tour_dict = {(s1, s2): tour_idx[i:j+1] for i, s1 in enumerate(tour_idx) for j, s2 in enumerate(tour_idx) if i != j and i < j}
+        od_scaling_mask = torch.zeros(self.grid_size, self.grid_size, device=device)
+
+        for c, subtour in tour_dict.items():
+            # Calculate direct euclidian distance
+            p1 = self.vector_to_grid(c[0]).float()
+            p2 = self.vector_to_grid(c[1]).float()
+            d_eucl = torch.dist(p1, p2, p=2)
+
+            # Calculate distance via subtour
+            points = [self.vector_to_grid(p).float() for p in subtour]
+            d_tour = sum([torch.dist(points[i], points[i+1]) for i, _ in enumerate(points) if i != len(points) - 1])
+
+            # Calculate scaling factor for subtour connection
+            scaled = self.reward_scaling_fn(d_eucl, d_tour)
+            od_scaling_mask[c[0], c[1]] = scaled
+
+        return od_scaling_mask
 
     def get_groups_file(self, environment):
         if environment == "diagonal_5x5" or environment == "dilemma_5x5":
@@ -152,7 +176,7 @@ class Environment(object):
         else:
             return None
 
-    def __init__(self, env_path, groups_file=None):
+    def __init__(self, env_path, groups_file=None, reward_scaling_fn=None):
         """Initialise city environment.
 
         Args:
@@ -235,6 +259,12 @@ class Environment(object):
                     exclude_pairs = torch.cat((exclude_pairs, pair1, pair2))
             
                 self.od_mx[exclude_pairs[:, 0], exclude_pairs[:, 1]] = 0
+
+        # Set the right scaling function for renewed reward function
+        if reward_scaling_fn == "inverse":
+            self.reward_scaling_fn = lambda d_eucl, d_tour: torch.nn.functional.relu(d_eucl/d_tour)
+        elif reward_scaling_fn == "linear":
+            self.reward_scaling_fn = lambda d_eucl, d_tour: torch.nn.functional.relu(1 - ((d_tour-1)/d_eucl))
 
         # Create the static representation of the grid coordinates - to be used by the actor.
         xs, ys = [], []
