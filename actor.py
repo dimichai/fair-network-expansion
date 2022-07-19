@@ -295,6 +295,7 @@ class DRL4Metro_reworked(nn.Module):
             tour_idx.append(ptr.data.unsqueeze(1))
 
         self.actor.init_foward(static, dynamic)
+        epsilon = 0.0001
 
         count_num = 0
         for _ in range(max_steps):
@@ -305,7 +306,7 @@ class DRL4Metro_reworked(nn.Module):
 
             self.actor.update_dynamic(static, dynamic, ptr)
             probs = self.actor.forward(static, dynamic)
-            probs = nn.functional.softmax(probs, dim=1)
+            probs = nn.functional.softmax((probs + epsilon), dim=1)
 
             # When training, sample the next step according to its probability.
             # During testing, we can take the greedy approach and choose highest
@@ -322,6 +323,9 @@ class DRL4Metro_reworked(nn.Module):
                 # print('!!!!!!!!!!!!!!!!!!!!  Greedy')
                 prob, ptr = torch.max(probs, 1)  # Greedy
                 logp = prob.log()
+
+            if ptr in tour_idx:
+                break
 
             # After visiting a node update the dynamic representation
             # Change the vector index to grid index

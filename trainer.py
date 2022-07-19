@@ -143,7 +143,7 @@ class Trainer(object):
 
             epoch_start = time.time()
             od_list, social_equity_list = [], []
-            actor_loss = critic_loss = rewards_sum = 0
+            actor_loss = critic_loss = rewards_sum = scale_factor = 0
 
             for _ in range(args.train_size):  # this loop accumulates a batch
                 tour_idx, tour_logp = self.actor(static, dynamic, args.station_num_lim, budget=args.budget,
@@ -177,9 +177,14 @@ class Trainer(object):
                 critic_loss += per_critic_loss
                 rewards_sum += reward
 
+                scale_m = self.environment.matrix_reward_scaling(tour_idx)
+                scale_m_mean = scale_m[torch.nonzero(scale_m, as_tuple=True)].mean()
+                scale_factor += scale_m_mean if not torch.isnan(scale_m_mean) else 0
+
             actor_loss = actor_loss / args.train_size
             critic_loss = critic_loss / args.train_size
             avg_reward = rewards_sum / args.train_size
+            avg_scale_factor = scale_factor / args.train_size
             average_od = sum(od_list) / len(od_list)
             average_Ac = sum(social_equity_list) / len(social_equity_list)
 
@@ -200,8 +205,8 @@ class Trainer(object):
             critic_optim.step()
 
             cost_time = time.time() - epoch_start
-            print('epoch %d, average_reward: %2.3f, actor_loss: %2.4f,  critic_loss: %2.4f, cost_time: %2.4fs'
-                  % (epoch, avg_reward.item(), actor_loss.item(), critic_loss.item(), cost_time))
+            print('epoch %d, average_reward: %2.3f, actor_loss: %2.4f,  sf: %2.4f, critic_loss: %2.4f, cost_time: %2.4fs'
+                  % (epoch, avg_reward.item(), actor_loss.item(), avg_scale_factor.item(), critic_loss.item(), cost_time))
 
             log_metric('average_reward', avg_reward.item())
             log_metric('actor_loss', actor_loss.item())
