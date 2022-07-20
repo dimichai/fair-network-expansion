@@ -135,6 +135,9 @@ class Trainer(object):
             with open(save_dir / 'args.txt', 'w') as f:
                 json.dump(vars(args), f, indent=2) 
 
+        if not os.path.exists(save_dir / "first_station"):
+            os.makedirs(save_dir / "first_station")
+
         # Save result and checkpoint folder for evaluation
         self.save_dir = save_dir
         self.checkpoint_dir = checkpoint_dir
@@ -257,12 +260,20 @@ class Trainer(object):
                     torch.save(self.actor.state_dict(), save_dir / 'actor.pt')
                     torch.save(self.critic.state_dict(), save_dir / 'critic.pt')
             
+            # if epoch % 10 == 0:
+                # data = self.actor.get_probs(static, dynamic).view(1, 5, 5).detach().numpy()[0]
+                # print(data)
+                # data = data / data.sum()
+                # plt.imshow(data)
+                # plt.savefig(save_dir / f"first_station/{epoch}.png")
+            
             # stop if the avg reward is 10 times the same
             if early_stopping > 9:
                 print("Early stopping!")
                 args.epoch_max = epoch
                 break
 
+            
 
         if not args.no_log:
             with open(save_dir / 'reward_actloss_criloss.txt', 'w') as f:
@@ -304,11 +315,13 @@ class Trainer(object):
         dynamic = torch.zeros((1, args.dynamic_size, self.environment.grid_size),
                               device=device).float()  # size with batch
 
+
         # generate 128 different lines to have a bigger sample size
         gen_lines = []
         for _ in range(args.train_size):
             with torch.no_grad():
                 tour_idx, _ = self.actor(static, dynamic, args.station_num_lim, decoder_input=None, last_hh=None)
+                print(tour_idx)
                 gen_lines.append(tour_idx)
 
         if not args.no_log:

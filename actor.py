@@ -53,6 +53,16 @@ class DRL4Metro(nn.Module):
         # Define the encoder & decoder models
         self.actor = actor
 
+    def get_probs(self, static, dynamic):
+        ptr = None
+        mask = torch.ones(1, 25, device=device)
+        self.actor.init_foward(static, dynamic)
+        self.actor.update_dynamic(static, dynamic, ptr)
+        probs = self.actor.forward(static, dynamic)
+        # probs = F.softmax(probs + mask*10000, dim=1)
+
+        return probs
+
     def forward(self, static, dynamic, station_num_lim, budget=None, initial_direct = None,line_unit_price = None, station_price = None,
                 decoder_input=None, last_hh=None):
         # initial_direct: direction
