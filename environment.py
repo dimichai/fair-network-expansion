@@ -144,6 +144,14 @@ class Environment(object):
         
         return od_mask
 
+    def get_groups_file(self, environment):
+        if environment == "diagonal_5x5" or environment == "dilemma_5x5":
+            return "groups.txt"
+        elif environment == "amsterdam" or environment == "xian":
+            return "price_groups_5.txt"
+        else:
+            return None
+
     def __init__(self, env_path, groups_file=None):
         """Initialise city environment.
 
@@ -153,15 +161,24 @@ class Environment(object):
         """
         super(Environment, self).__init__()
 
+        if not groups_file:
+            groups_file = self.get_groups_file(str(env_path).split("/")[-1])
+            print("No groups file provided. Trying to use the default groups file.")
+
         # read configuration file that contains basic parameters for the environment.
         config = configparser.ConfigParser()
         config.read(env_path / 'config.txt')
-        assert 'config' in config
+        assert 'config' in config, f"No config found! Please check if the environment {env_path} exists"
 
         # size of the grid
         self.grid_x_size = config.getint('config', 'grid_x_size')
         self.grid_y_size = config.getint('config', 'grid_y_size')
         self.grid_size = self.grid_x_size * self.grid_y_size
+
+        # Create a (1, grid_size) grid where each cell is represented by its [x,y] indices.
+        # Used to calculate distances from each grid cell, etc.
+        mesh = torch.meshgrid(torch.arange(0, self.grid_x_size), torch.arange(0, self.grid_y_size))
+        self.grid_indices = torch.dstack((mesh[0].flatten(), mesh[1].flatten())).squeeze()
 
         # size of the model's static and dynamic parts
         # self.static_size = config.getint('config', 'static_size')
@@ -183,10 +200,10 @@ class Environment(object):
             # matrix_from_file initializes a tensor with torch.zeros - we convert them to nans
             self.grid_groups[self.grid_groups == 0] = float('nan')
             # Get all unique groups
-            groups = self.grid_groups[~self.grid_groups.isnan()].unique()
+            self.groups = self.grid_groups[~self.grid_groups.isnan()].unique()
             # Create a group-specific od matrix for each group.
             self.group_od_mx = []
-            for g in groups:
+            for g in self.groups:
                 group_mask = torch.zeros(self.od_mx.shape, device=device)
                 group_squares = self.grid_to_vector((self.grid_groups == g).nonzero())
                 # Original OD matrix is symmetrical, so group OD matrices should also be symmetrical.

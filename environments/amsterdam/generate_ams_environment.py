@@ -70,9 +70,25 @@ fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_wijk.png')
 
 # Create metro lines
 metro_labels = ['50', '51', '52', '53', '54']
+# Sequence of stations in each metro line. Not provided in the dataset so we hard-code it using the OBJECTNUMMER column.
+# List of lists where each list corresponds to a line in metro_labels accordingly. 
+# E.g. metro_sequence[0] -> the sequence of stations for line metro_labels[0]
+metro_sequences = [
+        [162, 166, 168, 167, 171, 161, 170, 169, 172, 152, 173, 164, 191, 178, 174, 175, 176, 177, 165, 163], #50
+        [162, 166, 168, 167, 171, 161, 170, 169, 172, 152, 173, 164, 181, 190, 185, 184, 183, 189, 182], #51
+        [219, 218, 182, 220, 221, 222, 217, 152], #52
+        [182, 189, 183, 184, 185, 190, 181, 191, 196, 213, 192, 193, 194, 195], #53
+        [182, 189, 183, 184, 185, 190, 181, 191, 178, 174, 175, 176, 177, 165, 163], #54
+    ]
+# Convert each list of OBJECTNUMMER to a dictionary of {OBJECTNUMMER:0, ...} to merge with main dataframe
+metro_sequences = [{k: v for v, k in enumerate(ms)} for ms in metro_sequences]
+metro_sequences = [pd.DataFrame(ms.items(), columns=['OBJECTNUMMER', 'Seq']) for ms in metro_sequences]
+
 metro_lines = []
-for label in metro_labels:
-    metro_lines.append(metro_stops[metro_stops['Lijn_select'].str.contains(label)])
+for i, label in enumerate(metro_labels):
+    l = metro_stops[metro_stops['Lijn_select'].str.contains(label)]
+    l = l.merge(metro_sequences[i]).sort_values('Seq')
+    metro_lines.append(l)
 
 #%% Overlay the grid over the neighborhoods to calculate population by grid
 # https://gis.stackexchange.com/questions/421888/getting-the-percentage-of-how-much-areas-intersects-with-another-using-geopandas

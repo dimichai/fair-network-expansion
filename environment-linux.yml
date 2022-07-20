@@ -1,4 +1,4 @@
-name: fair-nw-expansion-linux
+name: fair-nw-expansion
 channels:
   - pytorch
   - conda-forge
