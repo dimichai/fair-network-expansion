@@ -1,7 +1,7 @@
 import csv
 import datetime
 import json
-from actor_modules import PointerActor, MLPActor, CNNActor
+from actor_modules import RNNActor, RNNActor_Attention, MLPActor_Attention, PointerActor, MLPActor, CNNActor
 from environment import Environment
 import os
 from pathlib import Path
@@ -13,7 +13,7 @@ from actor import DRL4Metro, DRL4Metro_reworked
 from constraints import Constraints
 from critic import PointerCritic, MLPCritic, CNNCritic
 import constants
-from reward import group_utility, od_utility, discounted_development_utility, lowest_quintile_utility
+from reward import ggi, group_utility, od_utility, discounted_development_utility, lowest_quintile_utility
 import matplotlib.pyplot as plt
 from mlflow import log_metric, log_artifact, log_param
 from utils import gini
@@ -54,11 +54,22 @@ class Trainer(object):
                                     args.actor_mlp_layers, environment.grid_size)
             critic_module = MLPCritic(args.static_size, args.dynamic_size, args.hidden_size,
                                       args.critic_mlp_layers, environment.grid_size)
+        elif args.arch == "mlp-att":
+            actor_module = MLPActor_Attention(args.static_size, args.dynamic_size, args.hidden_size,
+                                    args.actor_mlp_layers, environment.grid_size)
+            critic_module = PointerCritic(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
         elif args.arch == "cnn":
-            actor_module = CNNActor(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
-            critic_module = CNNCritic(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
+            actor_module = CNNActor(args.static_size, args.dynamic_size, args.hidden_size, args.actor_mlp_layers, environment.grid_size)
+            critic_module = CNNCritic(args.static_size, args.dynamic_size, args.hidden_size, args.actor_mlp_layers, environment.grid_size)
+        elif args.arch == "rnn":
+            actor_module = RNNActor(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
+            critic_module = MLPCritic(args.static_size, args.dynamic_size, args.hidden_size,
+                                      args.critic_mlp_layers, environment.grid_size)
+        elif args.arch == "rnn-att":
+            actor_module = RNNActor_Attention(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
+            critic_module = PointerCritic(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
         else:
-            raise NotImplementedError("{} not available as actor architecture.".format(args.actor))
+            raise NotImplementedError("{} not available as actor architecture.".format(args.arch))
         print(f"Number of trainable parameters actor-critic: {actor_module.nr_parameters} / {critic_module.nr_parameters}")
         if args.reward_scaling_fn == None:
             self.actor = DRL4Metro(actor_module,
@@ -113,11 +124,16 @@ class Trainer(object):
 
         train_start = time.time()
         print(f'Starts training on {device} - Model location is {save_dir}')
-        log_param('save_dir', save_dir)
+        
+        if not args.no_log:
+            log_param('save_dir', save_dir)
 
-        checkpoint_dir = save_dir / 'checkpoints'
-        if not os.path.exists(checkpoint_dir):
-            os.makedirs(checkpoint_dir)
+            checkpoint_dir = save_dir / 'checkpoints'
+            if not os.path.exists(checkpoint_dir):
+                os.makedirs(checkpoint_dir)
+
+            with open(save_dir / 'args.txt', 'w') as f:
+                json.dump(vars(args), f, indent=2) 
 
         # Save result and checkpoint folder for evaluation
         self.save_dir = save_dir
@@ -132,7 +148,7 @@ class Trainer(object):
         average_reward_list, actor_loss_list, critic_loss_list, average_od_list, average_Ac_list = [], [], [], [], []
         # best_params = None
         best_reward = 0
-
+        early_stopping = 0
         static = self.environment.static
         dynamic = torch.zeros((1, args.dynamic_size, self.environment.grid_size),
                               device=device).float()  # size with batch
@@ -159,11 +175,13 @@ class Trainer(object):
                         ses_reward = discounted_development_utility(tour_idx, self.environment)
                         reward = args.ses_weight * ses_reward + (1-args.ses_weight) * reward
                 elif args.reward == 'group':
-                    reward = group_utility(tour_idx, self.environment, args.var_lambda)
+                    reward = group_utility(tour_idx, self.environment, args.var_lambda, use_pct=not args.use_abs)
                 elif args.reward == 'ai_economist':
-                    reward = group_utility(tour_idx, self.environment, mult_gini=True)
+                    reward = group_utility(tour_idx, self.environment, mult_gini=True, use_pct=not args.use_abs)
                 elif args.reward == 'rawls':
-                    reward = lowest_quintile_utility(tour_idx, self.environment)
+                    reward = lowest_quintile_utility(tour_idx, self.environment, use_pct=not args.use_abs)
+                elif args.reward == 'ggi':
+                    reward = ggi(tour_idx, self.environment, args.ggi_weight, use_pct=not args.use_abs)
 
                 social_equity_list.append(ses_reward.item())
 
@@ -208,50 +226,68 @@ class Trainer(object):
             print('epoch %d, average_reward: %2.3f, actor_loss: %2.4f,  sf: %2.4f, critic_loss: %2.4f, cost_time: %2.4fs'
                   % (epoch, avg_reward.item(), actor_loss.item(), avg_scale_factor.item(), critic_loss.item(), cost_time))
 
-            log_metric('average_reward', avg_reward.item())
-            log_metric('actor_loss', actor_loss.item())
-            log_metric('critic_loss', critic_loss.item())
-            log_metric('average_od', average_od)
-            log_metric('average_ac', average_Ac)
 
             torch.cuda.empty_cache()  # reduce memory
 
-            # Save the weights of an epoch
-            epoch_dir = checkpoint_dir / str(epoch)
-            if not os.path.exists(epoch_dir):
-                os.makedirs(epoch_dir)
+            # increment early stopping every time that the reward was the same as the previous epoch
+            if epoch > 10 and avg_reward <= best_reward:
+                early_stopping += 1
+            else:  # set to zero if they are not the same
+                early_stopping = 0
+            
+            if not args.no_log:
+                log_metric('average_reward', avg_reward.item())
+                log_metric('actor_loss', actor_loss.item())
+                log_metric('critic_loss', critic_loss.item())
+                log_metric('average_od', average_od)
+                log_metric('average_ac', average_Ac)
 
-            torch.save(self.actor.state_dict(), epoch_dir / 'actor.pt')
-            torch.save(self.critic.state_dict(), epoch_dir / 'critic.pt')
+                # Save the weights of an epoch
+                epoch_dir = checkpoint_dir / str(epoch)
+                if not os.path.exists(epoch_dir):
+                    os.makedirs(epoch_dir)
 
-            # Save best model parameters
-            if avg_reward.item() > best_reward:
-                best_reward = avg_reward.item()
+                torch.save(self.actor.state_dict(), epoch_dir / 'actor.pt')
+                torch.save(self.critic.state_dict(), epoch_dir / 'critic.pt')
 
-                torch.save(self.actor.state_dict(), save_dir / 'actor.pt')
-                torch.save(self.critic.state_dict(), save_dir / 'critic.pt')
+                # Save best model parameters
+                if avg_reward.item() > best_reward:
+                    best_reward = avg_reward.item()
 
-        with open(save_dir / 'reward_actloss_criloss.txt', 'w') as f:
-            for i in range(args.epoch_max):
-                per_average_reward_record = average_reward_list[i]
-                per_actor_loss_record = actor_loss_list[i]
-                per_critic_loss_record = critic_loss_list[i]
-                per_epoch_od = average_od_list[i]
-                per_epoch_Ac = average_Ac_list[i]
+                    torch.save(self.actor.state_dict(), save_dir / 'actor.pt')
+                    torch.save(self.critic.state_dict(), save_dir / 'critic.pt')
+            
+            # stop if the avg reward is 10 times the same
+            if early_stopping > 9:
+                print("Early stopping!")
+                args.epoch_max = epoch
+                break
 
-                to_write = f'{per_average_reward_record}\t{per_actor_loss_record}\t{per_critic_loss_record}\t{per_epoch_od}\t{per_epoch_Ac}\n'
 
-                f.write(to_write)
+        if not args.no_log:
+            with open(save_dir / 'reward_actloss_criloss.txt', 'w') as f:
+                for i in range(args.epoch_max):
+                    per_average_reward_record = average_reward_list[i]
+                    per_actor_loss_record = actor_loss_list[i]
+                    per_critic_loss_record = critic_loss_list[i]
+                    per_epoch_od = average_od_list[i]
+                    per_epoch_Ac = average_Ac_list[i]
+
+                    to_write = f'{per_average_reward_record}\t{per_actor_loss_record}\t{per_critic_loss_record}\t{per_epoch_od}\t{per_epoch_Ac}\n'
+
+                    f.write(to_write)
 
         plt.plot(average_reward_list, '-', label="reward")
         plt.title(f'Reward vs. epochs - {now}')
         plt.ylabel('Reward')
         plt.legend(loc='best')
-        plt.savefig(save_dir / 'loss.png', dpi=800)
-        log_artifact(save_dir / 'loss.png')
+        if not args.no_log:
+            plt.savefig(save_dir / 'loss.png', dpi=800)
+            log_artifact(save_dir / 'loss.png')
 
         print(f'Finished training in {(time.time() - train_start)/60} minutes.')
-        log_metric('training_time', (time.time() - train_start)/60)
+        if not args.no_log:
+            log_metric('training_time', (time.time() - train_start)/60)
 
     def evaluate(self, args):
         assert args.result_path, 'args.checkpoint folder needs to be given to evalute a model'
@@ -275,9 +311,10 @@ class Trainer(object):
                 tour_idx, _ = self.actor(static, dynamic, args.station_num_lim, decoder_input=None, last_hh=None)
                 gen_lines.append(tour_idx)
 
-        with open(Path(args.result_path, 'tour_idx_multiple.txt'), "w", newline='') as f:
-            wr = csv.writer(f)
-            wr.writerows([line[0].tolist() for line in gen_lines])
+        if not args.no_log:
+            with open(Path(args.result_path, 'tour_idx_multiple.txt'), "w", newline='') as f:
+                wr = csv.writer(f)
+                wr.writerows([line[0].tolist() for line in gen_lines])
 
         # Plot the average generated line (from the multiple sample generated lines)
         plot_grid = self.gen_line_plot_grid(gen_lines)
@@ -290,26 +327,40 @@ class Trainer(object):
         nz = plot_grid.nonzero()
         avg_gen_line = np.stack((nz[0], nz[1]), axis=-1)
 
-        # Evaluate OD metrics
+        # Evaluate metrics
         satisfied_ods = np.zeros(len(gen_lines))
-        satisfied_group_ods = np.zeros((len(gen_lines), len(self.environment.group_od_mx)))  # make an array of dimensions lines x groups to store ods by line by group
+        satisfied_group_ods = np.zeros((len(gen_lines), len(self.environment.group_od_mx))) # make an array of dimensions lines x groups to store ods by line by group
+        # avg distance of every square to the nearest line stop.
+        distances = np.zeros(len(gen_lines))
+        group_distances = np.zeros((len(gen_lines), len(self.environment.group_od_mx)))
         for i, line in enumerate(gen_lines):
+            # Evaluate ODs
             sat_od_mask = self.environment.satisfied_od_mask(line)
             satisfied_ods[i] = (sat_od_mask * self.environment.od_mx).sum().item()
+
+            # Evaluate average distance to nearest public transport station.
+            # Manhattan distance between each grid cell and the average generated line.
+            line_g = self.environment.vector_to_grid(line).transpose(0, 1)
+            # Calculate the distance from every grid cell to every station in the generated line.
+            dist = torch.cdist(self.environment.grid_indices.float(), torch.tensor(line_g).float(), p=1)
+            # Find the distance of the station closest to each cell. Reshape as the grid (grid_x x grid_y)
+            min_dist = dist.min(axis=1)[0].reshape_as(self.environment.grid_groups)
+            # average distance of all grids with an assigned group (not NaN)
+            distances[i] = (~self.environment.grid_groups.isnan() * min_dist).sum() / (~self.environment.grid_groups.isnan()).sum()
 
             if self.environment.group_od_mx:
                 for j, g_od in enumerate(self.environment.group_od_mx):
                     satisfied_group_ods[i, j] = (g_od * sat_od_mask).sum().item()
+
+                    group_distances[i, j] = ((self.environment.grid_groups == self.environment.groups[j]) * min_dist).sum() / (self.environment.grid_groups == self.environment.groups[j]).sum()
 
         mean_sat_od = satisfied_ods.mean()
         mean_sat_od_pct = mean_sat_od / (self.environment.od_mx.sum() / 2)
         mean_sat_od_by_group = satisfied_group_ods.mean(axis=0)
         mean_sat_od_by_group_pct = mean_sat_od_by_group / [g.cpu().sum()/2 for g in self.environment.group_od_mx]
         total_group_od = sum([g.sum()/2 for g in self.environment.group_od_mx])
-        # print average satisfied flows and the satisfied share
-        # total od matrix sum is divided by 2 because it is symmetrical.
-        print(f'Average satisfied origin destination flows: {mean_sat_od} ({mean_sat_od_pct})')
-        print(f'Average satisfied origin destination flows by group: {mean_sat_od_by_group} ({mean_sat_od_by_group_pct})')
+        mean_distance = distances.mean()
+        mean_group_distance = group_distances.mean(axis=0)
 
         # Plot bars of satisfied ODs by group and overall
         fig, axs = plt.subplots(1, 2, figsize=(15, 5))
@@ -320,6 +371,14 @@ class Trainer(object):
 
         fig.savefig(Path(args.result_path, 'satisfied_od_by_group.png'))
         # log_artifact(Path(args.result_path, 'satisfied_od_by_group.png'))
+
+        # Plot bars of average distance to nearest stop by group and overall
+        fig, ax = plt.subplots(figsize=(7, 5))
+        ax.bar(range(mean_group_distance.shape[0]), mean_group_distance)
+        ax.title.set_text(f'Mean distance to nearest stop by group \n Mean Overall Distance: {round(mean_distance, 2)} \n Model: {args.result_path}')
+        ax.axhline(y=mean_distance,linewidth=1, color='gray', ls='--')
+
+        fig.savefig(Path(args.result_path, 'mean_distance_to_stop.png'))
 
         group_gini = gini(mean_sat_od_by_group)
         group_pct_gini = gini(mean_sat_od_by_group_pct)
@@ -334,8 +393,11 @@ class Trainer(object):
             'mean_sat_group_od': sum(mean_sat_od_by_group).item(),
             'mean_sat_group_od_pct': (sum(mean_sat_od_by_group)/total_group_od).item(),
             'group_gini': group_gini,
-            'group_pct_gini': group_pct_gini
+            'group_pct_gini': group_pct_gini,
+            'mean_distance': mean_distance,
+            'mean_group_distance': mean_group_distance.tolist()
         }
 
-        with open(Path(args.result_path, 'result_metrics.json'), 'w') as outfile:
-            json.dump(result_metrics, outfile)
+        if not args.no_log:
+            with open(Path(args.result_path, 'result_metrics.json'), 'w') as outfile:
+                json.dump(result_metrics, outfile)

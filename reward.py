@@ -92,7 +92,7 @@ def discounted_development_utility(tour_idx: torch.Tensor, environment: Environm
 
     Args:
         tour_idx (torch.Tensor): the generated line.
-        environment (Environment): the environment wher ethe line is generated.
+        environment (Environment): the environment where the line is generated.
         p (float, optional): p-norm distance to calculate: 1: manhattan, 2: euclidean, etc. Defaults to 2.0.
 
     Returns:
@@ -114,3 +114,42 @@ def discounted_development_utility(tour_idx: torch.Tensor, environment: Environm
         total_util += (discount * tour_ses).sum()
 
     return total_util
+
+def ggi(tour_idx: torch.Tensor, environment: Environment, weight, use_pct=True):
+    """Generalized Gini Index reward (see paper for more information).
+    Exponentially smaller weights are assigned to the groups with the highest satisfied origin-destination flows.
+
+    Args:
+        tour_idx (torch.Tensor): the generated line.
+        environment (Environment): the environment where the line is generated: 1/weight^index in order
+        weight (int): weight base to use on the calculation of GGI: 
+        use_pct (bool, optional): if True, reward will be calculated using percentage of satisfied OD per group. If false, it will use absolute values. Defaults to True.
+
+    Returns:
+        torch.Tensor: total ggi
+    """
+    sat_od_mask = environment.satisfied_od_mask(tour_idx)
+
+    sat_group_ods = torch.zeros(len(environment.group_od_mx), device=device)
+    sat_group_ods_pct = torch.zeros(len(environment.group_od_mx), device=device)
+    for i, g_od in enumerate(environment.group_od_mx):
+        sat_group_ods[i] = (g_od * sat_od_mask).sum().item()
+        sat_group_ods_pct[i] = sat_group_ods[i] / g_od.sum()
+
+    if use_pct:
+        group_rw = sat_group_ods_pct
+    else:
+        group_rw = sat_group_ods
+
+    # Generate weights for each group.
+    weights = torch.tensor([1/(weight**i) for i in range(group_rw.shape[0])], device=device)
+    # "Normalize" weights to sum to 1
+    weights = weights/weights.sum()
+    
+    group_rw, _ = torch.sort(group_rw)
+    reward = torch.sum(group_rw * weights)
+
+    if use_pct:
+        reward *= 1000
+
+    return reward

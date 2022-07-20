@@ -199,6 +199,11 @@ class Environment(object):
         self.grid_y_size = config.getint('config', 'grid_y_size')
         self.grid_size = self.grid_x_size * self.grid_y_size
 
+        # Create a (1, grid_size) grid where each cell is represented by its [x,y] indices.
+        # Used to calculate distances from each grid cell, etc.
+        mesh = torch.meshgrid(torch.arange(0, self.grid_x_size), torch.arange(0, self.grid_y_size))
+        self.grid_indices = torch.dstack((mesh[0].flatten(), mesh[1].flatten())).squeeze()
+
         # size of the model's static and dynamic parts
         # self.static_size = config.getint('config', 'static_size')
         # self.dynamic_size = config.getint('config', 'dynamic_size')
@@ -219,10 +224,10 @@ class Environment(object):
             # matrix_from_file initializes a tensor with torch.zeros - we convert them to nans
             self.grid_groups[self.grid_groups == 0] = float('nan')
             # Get all unique groups
-            groups = self.grid_groups[~self.grid_groups.isnan()].unique()
+            self.groups = self.grid_groups[~self.grid_groups.isnan()].unique()
             # Create a group-specific od matrix for each group.
             self.group_od_mx = []
-            for g in groups:
+            for g in self.groups:
                 group_mask = torch.zeros(self.od_mx.shape, device=device)
                 group_squares = self.grid_to_vector((self.grid_groups == g).nonzero())
                 # Original OD matrix is symmetrical, so group OD matrices should also be symmetrical.

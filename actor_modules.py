@@ -7,6 +7,13 @@ import constants
 
 device = constants.device
 
+class printModule(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x):
+        print("x.shape:", x.shape)
+        return x
 
 class Actor(nn.Module):
     """An abstract actor architecture. Can be used as a template for new architectures,
@@ -118,23 +125,169 @@ class MLPActor(Actor):
         probs = self.mlp(state.reshape(batch_size, (num_gridblocks * static_size) + (num_gridblocks * dynamic_size)))
         return probs
 
+class MLPActor_Attention(Actor):
+    def __init__(self, static_size, dynamic_size, hidden_size, nr_layers=5, num_gridblocks=25):
+        super(MLPActor_Attention, self).__init__()
+
+        if dynamic_size < 1:
+            raise ValueError(':param dynamic_size: must be > 0, even if the '
+                             'problem has no dynamic elements')
+
+        # Reduce size from (N^2 * (static_size + dynamic_size)) to (N^2) and project to hidden (LARGE LAYER!)
+        downsample = [nn.Conv1d(static_size + dynamic_size, static_size + dynamic_size, kernel_size=1),
+                      nn.ReLU(),
+                      nn.Conv1d(static_size + dynamic_size, 1, kernel_size=1),
+                      nn.ReLU(),
+                      nn.Flatten(start_dim=1, end_dim=2),
+                      nn.Linear(num_gridblocks, hidden_size),
+                      nn.ReLU()]
+        mlp = [[nn.Linear(hidden_size, hidden_size), nn.ReLU()] for i in range(nr_layers - 1)]
+        mlp = [it for block in mlp for it in block]
+
+        self.downsample = nn.Sequential(*downsample)
+        self.mlp = nn.Sequential(*mlp)
+
+        self.encoder_attn = Attention(hidden_size).to(device)
+        self.static_hidden = nn.Conv1d(static_size, hidden_size, kernel_size=1)
+        self.dynamic_hidden = nn.Conv1d(dynamic_size, hidden_size, kernel_size=1)
+
+        for p in self.parameters():
+            if len(p.shape) > 1:
+                nn.init.kaiming_uniform_(p)
+
+    def forward(self, static, dynamic, *args):
+        state = self.construct_state(static, dynamic)
+        out = self.downsample(state)
+        hidden = self.mlp(out)
+
+        # Attention
+        static_hidden = self.static_hidden(static)
+        dynamic_hidden = self.dynamic_hidden(dynamic)
+        att = self.encoder_attn(static_hidden, dynamic_hidden, hidden)
+        return att
+
+
+class RNNActor(Actor):
+    def __init__(self, static_size, dynamic_size, hidden_size, num_gridblocks=25, *args):
+        super(RNNActor, self).__init__()
+
+        if dynamic_size < 1:
+            raise ValueError(':param dynamic_size: must be > 0, even if the '
+                             'problem has no dynamic elements')
+
+        self.num_gridblocks = num_gridblocks
+        self.hidden_size = hidden_size
+        
+        # Reduce size from (N^2 * (static_size + dynamic_size)) to (N^2)
+        downsample = [nn.Conv1d(static_size + dynamic_size, static_size + dynamic_size, kernel_size=1),
+                      nn.ReLU(),
+                      nn.Conv1d(static_size + dynamic_size, 1, kernel_size=1),
+                      nn.ReLU(),
+                      nn.Flatten(start_dim=1, end_dim=2),
+                      nn.Linear(num_gridblocks, hidden_size),
+                      nn.ReLU()]
+        self.downsample = nn.Sequential(*downsample)
+        self.rnn = nn.RNN(hidden_size, hidden_size, nonlinearity="relu", batch_first=True)
+        self.final = nn.Linear(hidden_size, num_gridblocks)
+
+        for p in self.parameters():
+            if len(p.shape) > 1:
+                nn.init.kaiming_uniform_(p)
+
+    def init_foward(self, static, dynamic, *args):
+        self.hidden = torch.zeros(1, self.hidden_size, requires_grad=True).to(device)
+
+    def forward(self, static, dynamic, *args):
+
+        # Downsample state space
+        state = self.construct_state(static, dynamic)
+        out = self.downsample(state).squeeze(dim=1)
+
+        # Apply RNN
+        rnn, self.hidden = self.rnn(out, self.hidden)
+        if rnn.dim() == 2:
+            rnn = rnn.unsqueeze(dim=1)
+
+        # Apply attention
+        last_hh = rnn[:, -1, :]
+        return self.final(last_hh)
+
+
+class RNNActor_Attention(Actor):
+    def __init__(self, static_size, dynamic_size, hidden_size, num_gridblocks=25, *args):
+        super(RNNActor_Attention, self).__init__()
+
+        if dynamic_size < 1:
+            raise ValueError(':param dynamic_size: must be > 0, even if the '
+                             'problem has no dynamic elements')
+
+        self.num_gridblocks = num_gridblocks
+        self.hidden_size = hidden_size
+        
+        # Reduce size from (N^2 * (static_size + dynamic_size)) to (N^2)
+        downsample = [nn.Conv1d(static_size + dynamic_size, static_size + dynamic_size, kernel_size=1),
+                      nn.ReLU(),
+                      nn.Conv1d(static_size + dynamic_size, 1, kernel_size=1),
+                      nn.ReLU(),
+                      nn.Flatten(start_dim=1, end_dim=2),
+                      nn.Linear(num_gridblocks, hidden_size),
+                      nn.ReLU()]
+        self.downsample = nn.Sequential(*downsample)
+        self.rnn = nn.RNN(hidden_size, hidden_size, nonlinearity="relu", batch_first=True)
+
+        # Attention
+        self.static_encoder = nn.Conv1d(static_size, hidden_size, kernel_size=1)
+        self.dynamic_encoder = nn.Conv1d(dynamic_size, hidden_size, kernel_size=1)
+        self.encoder_attn = Attention(hidden_size).to(device)
+
+        for p in self.parameters():
+            if len(p.shape) > 1:
+                nn.init.kaiming_uniform_(p)
+
+    def init_foward(self, static, dynamic, *args):
+        self.hidden = torch.zeros(1, self.hidden_size, requires_grad=True).to(device)
+        self.static_hidden = self.static_encoder(static)  # static: Array of size (batch_size, feats, num_gridblocks)
+
+    def forward(self, static, dynamic, *args):
+
+        # Downsample state space
+        state = self.construct_state(static, dynamic)
+        out = self.downsample(state).squeeze(dim=1)
+
+        # Apply RNN
+        rnn, self.hidden = self.rnn(out, self.hidden)
+        if rnn.dim() == 2:
+            rnn = rnn.unsqueeze(dim=1)
+
+        # Apply attention
+        last_hh = rnn[:, -1, :]
+        att = self.encoder_attn(self.static_hidden, self.dynamic_hidden, last_hh)
+        return att
+
+    def update_dynamic(self, static, dynamic, *args):
+        self.dynamic_hidden = self.dynamic_encoder(dynamic)
 
 class CNNActor(Actor):
-    def __init__(self, static_size, dynamic_size, hidden_size, num_gridblocks=25, *args):
+    def __init__(self, static_size, dynamic_size, hidden_size, nr_layers=5, num_gridblocks=25, *args):
         super(CNNActor, self).__init__()
         self.grid_side_length = int(np.sqrt(num_gridblocks))
         assert self.grid_side_length ** 2 == num_gridblocks, "Square root error {} != {}^2. Please review this code".format(num_gridblocks, self.grid_side_length)
         assert num_gridblocks == 25, "Implementation for 5x5 grid."
 
-        conv_l = [nn.Conv2d(static_size + dynamic_size, 8, kernel_size=3, padding=1), nn.ReLU(),
-                  nn.Conv2d(8, 16, kernel_size=3, padding=1), nn.ReLU(),
-                  nn.Conv2d(16, 32, kernel_size=3), nn.ReLU(),
-                  nn.Conv2d(32, 64, kernel_size=3), nn.ReLU()]
+        conv_l = [nn.Conv2d(static_size + dynamic_size, 16, kernel_size=3, padding=1), nn.ReLU(),
+                  nn.Conv2d(16, 32, kernel_size=3, padding=1), nn.ReLU(),
+                  nn.Conv2d(32, 64, kernel_size=3), nn.ReLU(),
+                  nn.Conv2d(64, 128, kernel_size=3), nn.ReLU(),
+                  nn.Flatten(start_dim=1)]
+        mlp = [[nn.Linear(hidden_size, hidden_size), nn.ReLU()] for _ in range(nr_layers - 1)]
+        mlp = [it for block in mlp for it in block]
 
         self.cnn = nn.Sequential(*conv_l)
-        self.mlp = nn.Sequential(*[nn.Linear(64, hidden_size),
-                                   nn.ReLU(),
-                                   nn.Linear(hidden_size, num_gridblocks)])
+        self.mlp = nn.Sequential(*mlp, nn.Linear(hidden_size, num_gridblocks))
+
+        for _, p in self.named_parameters():
+            if len(p.shape) > 1:
+                nn.init.kaiming_uniform_(p)
 
     def forward(self, static, dynamic, *args):
         batch_size, static_size, _ = static.shape
@@ -142,7 +295,7 @@ class CNNActor(Actor):
 
         state = self.construct_state(static, dynamic)
         cnn = self.cnn(state.view(batch_size, static_size + dynamic_size, self.grid_side_length, self.grid_side_length))
-        mlp = self.mlp(cnn.squeeze(dim=2).squeeze(dim=2))
+        mlp = self.mlp(cnn)
 
         return mlp
 
