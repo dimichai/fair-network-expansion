@@ -62,6 +62,8 @@ if __name__ == "__main__":
     parser.add_argument('--arch', choices=["pointer", "mlp", "mlp-att", "cnn", "rnn", "rnn-att"], default="pointer", type=str)
     parser.add_argument('--no_log', action='store_true', default=False)
     parser.add_argument('--use_abs', action='store_true', default=False) # if true, it will use absolute values of satisfied OD as reward (default is to use percentage satsified OD) (does not work in weighted reward)
+    parser.add_argument('--early_stopping', default=0, type=int,
+                        help="stop training if the amount of consecutive epochs without improvement of the best score is higher than this argument (0 is off).")
 
     args = parser.parse_args()
 

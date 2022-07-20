@@ -248,7 +248,7 @@ class Trainer(object):
                     torch.save(self.critic.state_dict(), save_dir / 'critic.pt')
             
             # stop if the avg reward is 10 times the same
-            if early_stopping > 9:
+            if args.early_stopping and early_stopping > args.early_stopping:
                 print("Early stopping!")
                 args.epoch_max = epoch
                 break
