@@ -218,6 +218,12 @@ class Trainer(object):
 
 
             torch.cuda.empty_cache()  # reduce memory
+
+            # increment early stopping every time that the reward was the same as the previous epoch
+            if epoch > 10 and avg_reward <= best_reward:
+                early_stopping += 1
+            else:  # set to zero if they are not the same
+                early_stopping = 0
             
             if not args.no_log:
                 log_metric('average_reward', avg_reward.item())
@@ -241,12 +247,6 @@ class Trainer(object):
                     torch.save(self.actor.state_dict(), save_dir / 'actor.pt')
                     torch.save(self.critic.state_dict(), save_dir / 'critic.pt')
             
-            # increment early stopping every time that the reward was the same as the previous epoch
-            if epoch > 10 and avg_reward <= average_reward_list[-2]:
-                early_stopping += 1
-            else:  # set to zero if they are not the same
-                early_stopping = 0
-
             # stop if the avg reward is 10 times the same
             if early_stopping > 9:
                 print("Early stopping!")
