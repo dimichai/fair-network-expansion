@@ -197,12 +197,13 @@ class Trainer(object):
                 actor_loss += per_actor_loss
                 critic_loss += per_critic_loss
                 rewards_sum += reward
+                
+                if args.reward_scaling_fn:
+                    scale_m = self.environment.matrix_reward_scaling(tour_idx)
+                    scale_m_mean = scale_m[torch.nonzero(scale_m, as_tuple=True)].mean()
+                    scale_factor += scale_m_mean if not torch.isnan(scale_m_mean) else 0
 
-                scale_m = self.environment.matrix_reward_scaling(tour_idx)
-                scale_m_mean = scale_m[torch.nonzero(scale_m, as_tuple=True)].mean()
-                scale_factor += scale_m_mean if not torch.isnan(scale_m_mean) else 0
-
-                line_len += len(tour_idx[0])
+                    line_len += len(tour_idx[0])
 
             actor_loss = actor_loss / args.train_size
             critic_loss = critic_loss / args.train_size
@@ -229,8 +230,12 @@ class Trainer(object):
             critic_optim.step()
 
             cost_time = time.time() - epoch_start
-            print('epoch %d, average_reward: %2.3f, actor_loss: %2.4f,  sf: %2.4f, ll: %2.2f, critic_loss: %2.4f, cost_time: %2.4fs'
-                  % (epoch, avg_reward.item(), actor_loss.item(), avg_scale_factor.item(), avg_line_len, critic_loss.item(), cost_time))
+            if args.reward_scaling_fn:
+                print('epoch %d, average_reward: %2.3f, actor_loss: %2.4f,  sf: %2.4f, ll: %2.2f, critic_loss: %2.4f, cost_time: %2.4fs'
+                      % (epoch, avg_reward.item(), actor_loss.item(), avg_scale_factor.item(), avg_line_len, critic_loss.item(), cost_time))
+            else:
+                print('epoch %d, average_reward: %2.3f, actor_loss: %2.4f, critic_loss: %2.4f, cost_time: %2.4fs'
+                      % (epoch, avg_reward.item(), actor_loss.item(), critic_loss.item(), cost_time))
 
 
             torch.cuda.empty_cache()  # reduce memory
