@@ -46,10 +46,6 @@ grid = gpd.GeoDataFrame(grid, crs=CRS)
 grid_x_size = grid.g_x.max() + 1
 grid_y_size = grid.g_y.max() + 1
 
-# Metro Lines
-# metro_lines = pd.read_csv('./metro_lines.csv')
-# metro_lines = gpd.GeoDataFrame(metro_lines, geometry=gpd.points_from_xy(metro_lines['x'], metro_lines['y']))
-
 metro_stops = pd.read_csv('./TRAMMETRO_PUNTEN_2022.csv', delimiter=';')
 metro_stops = metro_stops[metro_stops['Modaliteit'] == 'Metro']
 metro_stops = gpd.GeoDataFrame(
