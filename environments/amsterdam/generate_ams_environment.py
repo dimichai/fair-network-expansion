@@ -181,6 +181,17 @@ fig.colorbar(im, orientation='vertical')
 ax.legend()
 fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_avg_income.png')
 
+# Save existing lines' grid coordinates to a file.
+metro_lines_g = []
+for i, l in enumerate(metro_lines):
+    l_v = l.sjoin(grid)
+    l_g = [list(i) for i in zip(l_v['g_x'].tolist(), l_v['g_y'].tolist())]
+    metro_lines_g.append(l_g)
+
+# The contents of this file are then copied to environments/amsterdam/config.txt on existing_lines field
+with open('./existing_lines.txt', 'w+') as f:
+    for line in metro_lines_g:
+        f.write(f"{line}\n")
 
 fig, ax = plt.subplots(figsize=(15, 10))
 im = ax.imshow(gridenvhp, cmap='Blues')
