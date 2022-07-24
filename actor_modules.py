@@ -168,7 +168,7 @@ class MLPActor_Attention(Actor):
 
 
 class RNNActor(Actor):
-    def __init__(self, static_size, dynamic_size, hidden_size, num_gridblocks=25, *args):
+    def __init__(self, static_size, dynamic_size, hidden_size, nr_layers=5, num_gridblocks=25, *args):
         super(RNNActor, self).__init__()
 
         if dynamic_size < 1:
@@ -188,7 +188,10 @@ class RNNActor(Actor):
                       nn.ReLU()]
         self.downsample = nn.Sequential(*downsample)
         self.rnn = nn.RNN(hidden_size, hidden_size, nonlinearity="relu", batch_first=True)
-        self.final = nn.Linear(hidden_size, num_gridblocks)
+
+        mlp = [[nn.Linear(hidden_size, hidden_size), nn.ReLU()] for _ in range(nr_layers - 1)]
+        mlp = [it for block in mlp for it in block]
+        self.mlp = nn.Sequential(*mlp, nn.Linear(hidden_size, num_gridblocks))
 
         for p in self.parameters():
             if len(p.shape) > 1:
@@ -210,7 +213,7 @@ class RNNActor(Actor):
 
         # Apply attention
         last_hh = rnn[:, -1, :]
-        return self.final(last_hh)
+        return self.mlp(last_hh)
 
 
 class RNNActor_Attention(Actor):

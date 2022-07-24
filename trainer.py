@@ -62,7 +62,7 @@ class Trainer(object):
             actor_module = CNNActor(args.static_size, args.dynamic_size, args.hidden_size, args.actor_mlp_layers, environment.grid_size)
             critic_module = CNNCritic(args.static_size, args.dynamic_size, args.hidden_size, args.actor_mlp_layers, environment.grid_size)
         elif args.arch == "rnn":
-            actor_module = RNNActor(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
+            actor_module = RNNActor(args.static_size, args.dynamic_size, args.hidden_size, args.actor_mlp_layers, environment.grid_size)
             critic_module = MLPCritic(args.static_size, args.dynamic_size, args.hidden_size,
                                       args.critic_mlp_layers, environment.grid_size)
         elif args.arch == "rnn-att":
@@ -351,6 +351,10 @@ class Trainer(object):
         total_group_od = sum([g.sum()/2 for g in self.environment.group_od_mx])
         mean_distance = distances.mean()
         mean_group_distance = group_distances.mean(axis=0)
+
+        # These print statements are used by hparam_search.sh
+        print(f'Average satisfied origin destination flows: {mean_sat_od} ({mean_sat_od_pct})')
+        print(f'Average satisfied origin destination flows by group: {mean_sat_od_by_group} ({mean_sat_od_by_group_pct})')
 
         # Plot bars of satisfied ODs by group and overall
         fig, axs = plt.subplots(1, 2, figsize=(15, 5))
