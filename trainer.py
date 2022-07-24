@@ -332,7 +332,7 @@ class Trainer(object):
             # Manhattan distance between each grid cell and the average generated line.
             line_g = self.environment.vector_to_grid(line).transpose(0, 1)
             # Calculate the distance from every grid cell to every station in the generated line.
-            dist = torch.cdist(self.environment.grid_indices.float(), torch.tensor(line_g).float(), p=1)
+            dist = torch.cdist(self.environment.grid_indices.float().to(device), line_g.float(), p=1)
             # Find the distance of the station closest to each cell. Reshape as the grid (grid_x x grid_y)
             min_dist = dist.min(axis=1)[0].reshape_as(self.environment.grid_groups)
             # average distance of all grids with an assigned group (not NaN)

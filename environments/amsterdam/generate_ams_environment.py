@@ -46,10 +46,6 @@ grid = gpd.GeoDataFrame(grid, crs=CRS)
 grid_x_size = grid.g_x.max() + 1
 grid_y_size = grid.g_y.max() + 1
 
-# Metro Lines
-# metro_lines = pd.read_csv('./metro_lines.csv')
-# metro_lines = gpd.GeoDataFrame(metro_lines, geometry=gpd.points_from_xy(metro_lines['x'], metro_lines['y']))
-
 metro_stops = pd.read_csv('./TRAMMETRO_PUNTEN_2022.csv', delimiter=';')
 metro_stops = metro_stops[metro_stops['Modaliteit'] == 'Metro']
 metro_stops = gpd.GeoDataFrame(
@@ -185,7 +181,65 @@ fig.colorbar(im, orientation='vertical')
 ax.legend()
 fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_avg_income.png')
 
+# Save existing lines' grid coordinates to a file.
+metro_lines_g = []
+for i, l in enumerate(metro_lines):
+    l_v = l.sjoin(grid)
+    l_g = [list(i) for i in zip(l_v['g_x'].tolist(), l_v['g_y'].tolist())]
+    metro_lines_g.append(l_g)
 
+# The contents of this file are then copied to environments/amsterdam/config.txt on existing_lines field
+with open('./existing_lines.txt', 'w+') as f:
+    for line in metro_lines_g:
+        f.write(f"{line}\n")
+
+# Generate and save existing lines full grid coordinates.
+# TODO: rework this script - it's very raw and was written in an age of haste, famine and scientific integrity collapse.
+# Basically we want to fill the cells between two consecutive metro stops. This helps later on when we look for potential connections to the old lines from the newly created ones.
+# e.g if the existing lines have stations in cells [1, 1] and [1, 3], this script will also append [1, 2] in between the other stations.
+metro_lines_full = []
+for l_i, l in enumerate(metro_lines_g):
+    l_full = []
+
+    for i in range(1, len(l)):
+        l_full.append(l[i-1])
+
+        xmin = min(l[i-1][0], l[i][0])
+        xmax = max(l[i-1][0], l[i][0])
+
+        ymin = min(l[i-1][1], l[i][1])
+        ymax = max(l[i-1][1], l[i][1])
+
+        x = range(xmin, xmax)[1:]
+        y = range(ymin, ymax)[1:]
+
+        if len(x) == 0 and len(y) == 0:
+            continue
+
+        max_len = max(len(x), len(y))
+        
+        if len(x) == 0:
+            x = [xmin]
+        if len(y) == 0:
+            y = [ymin]
+        
+        x = list(x)
+        y = list(y)
+
+        x.extend([x[0]] * abs(len(x)-len(y)))
+        y.extend([y[0]] * abs(len(x)-len(y)))
+
+        for k in range(len(x)):
+            l_full.append([x[k], y[k]])
+        l_full.append(l[i])
+    metro_lines_full.append(l_full)
+
+# The contents of this file are then copied to environments/amsterdam/config.txt on existing_lines_full field
+with open('./existing_lines_full.txt', 'w+') as f:
+    for line in metro_lines_full:
+        f.write(f"{line}\n")
+
+#%%
 fig, ax = plt.subplots(figsize=(15, 10))
 im = ax.imshow(gridenvhp, cmap='Blues')
 fig.suptitle('Amsterdam Grid Avg House Price', fontsize=30)
