@@ -71,6 +71,8 @@ if __name__ == "__main__":
     parser.add_argument('--cf_reward_scaling', default="linear", type=str, choices=["linear", "inverse"])
     parser.add_argument('--cf_efficient_station', default=None, type=str, choices=["constant", "ratio"])
 
+    parser.add_argument('--plot_every', type=int, default=10)
+
     args = parser.parse_args()
 
     if args.seed:

@@ -133,6 +133,10 @@ class Trainer(object):
             with open(save_dir / 'args.txt', 'w') as f:
                 json.dump(vars(args), f, indent=2) 
 
+            if args.plot_every:
+                plot_dir = os.path.join(save_dir, "plots")
+                os.makedirs(plot_dir)
+
         # if not os.path.exists(save_dir / "first_station"):
         #     os.makedirs(save_dir / "first_station")
 
@@ -266,12 +270,17 @@ class Trainer(object):
                     torch.save(self.actor.state_dict(), save_dir / 'actor.pt')
                     torch.save(self.critic.state_dict(), save_dir / 'critic.pt')
             
-            # if epoch % 10 == 0:
-                # data = self.actor.get_probs(static, dynamic).view(1, 5, 5).detach().numpy()[0]
-                # print(data)
-                # data = data / data.sum()
-                # plt.imshow(data)
-                # plt.savefig(save_dir / f"first_station/{epoch}.png")
+            if not args.no_log and args.plot_every and epoch != 0 and epoch % args.plot_every == 0:
+                self.actor.eval()
+                gen_lines = []
+                with torch.no_grad():
+                    tour_idx, _ = self.actor(static, dynamic, args.station_num_lim, decoder_input=None, last_hh=None)
+                    gen_lines.append(tour_idx)
+                plot_grid = self.gen_line_plot_grid(gen_lines)
+                fig, ax = plt.subplots(figsize=(5, 5))
+                ax.imshow(plot_grid)
+                fig.suptitle(f'{args.environment} - Average Generated line \n from {args.result_path}')
+                fig.savefig(Path(plot_dir, f'{epoch}.png'))
             
             # stop if the avg reward is 10 times the same
             if args.early_stopping and early_stopping > args.early_stopping:
