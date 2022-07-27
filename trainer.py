@@ -98,14 +98,12 @@ class Trainer(object):
             grid_y_mask (int): nr of columns in the grid
         """
         data = np.zeros((self.environment.grid_x_size, self.environment.grid_y_size))
+        line = lines[0]
+        line_g = self.environment.vector_to_grid(line)
+            
 
-        for line in lines:
-            line_g = self.environment.vector_to_grid(line)
-
-            for i in range(line_g.shape[1]):
-                data[line_g[0, i], line_g[1, i]] += 1
-
-        data = data / len(lines)
+        for i in range(line_g.shape[1]):
+            data[line_g[0, i], line_g[1, i]] = i
 
         return data
 
