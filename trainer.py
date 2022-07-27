@@ -62,7 +62,7 @@ class Trainer(object):
             actor_module = CNNActor(args.static_size, args.dynamic_size, args.hidden_size, args.actor_mlp_layers, environment.grid_size)
             critic_module = CNNCritic(args.static_size, args.dynamic_size, args.hidden_size, args.actor_mlp_layers, environment.grid_size)
         elif args.arch == "rnn":
-            actor_module = RNNActor(args.static_size, args.dynamic_size, args.hidden_size, environment.grid_size)
+            actor_module = RNNActor(args.static_size, args.dynamic_size, args.hidden_size, args.actor_mlp_layers, environment.grid_size)
             critic_module = MLPCritic(args.static_size, args.dynamic_size, args.hidden_size,
                                       args.critic_mlp_layers, environment.grid_size)
         elif args.arch == "rnn-att":
@@ -276,7 +276,7 @@ class Trainer(object):
                 # plt.savefig(save_dir / f"first_station/{epoch}.png")
             
             # stop if the avg reward is 10 times the same
-            if early_stopping > 9:
+            if args.early_stopping and early_stopping > args.early_stopping:
                 print("Early stopping!")
                 args.epoch_max = epoch
                 break
@@ -363,7 +363,7 @@ class Trainer(object):
             # Manhattan distance between each grid cell and the average generated line.
             line_g = self.environment.vector_to_grid(line).transpose(0, 1)
             # Calculate the distance from every grid cell to every station in the generated line.
-            dist = torch.cdist(self.environment.grid_indices.float(), torch.tensor(line_g).float(), p=1)
+            dist = torch.cdist(self.environment.grid_indices.float().to(device), line_g.float(), p=1)
             # Find the distance of the station closest to each cell. Reshape as the grid (grid_x x grid_y)
             min_dist = dist.min(axis=1)[0].reshape_as(self.environment.grid_groups)
             # average distance of all grids with an assigned group (not NaN)
@@ -382,6 +382,10 @@ class Trainer(object):
         total_group_od = sum([g.sum()/2 for g in self.environment.group_od_mx])
         mean_distance = distances.mean()
         mean_group_distance = group_distances.mean(axis=0)
+
+        # These print statements are used by hparam_search.sh
+        print(f'Average satisfied origin destination flows: {mean_sat_od} ({mean_sat_od_pct})')
+        print(f'Average satisfied origin destination flows by group: {mean_sat_od_by_group} ({mean_sat_od_by_group_pct})')
 
         # Plot bars of satisfied ODs by group and overall
         fig, axs = plt.subplots(1, 2, figsize=(15, 5))
