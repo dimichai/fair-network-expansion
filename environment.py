@@ -169,7 +169,7 @@ class Environment(object):
         return od_scaling_mask
 
     def get_groups_file(self, environment):
-        if environment == "diagonal_5x5" or environment == "dilemma_5x5" or "diamond_5x5":
+        if environment == "diagonal_5x5" or environment == "dilemma_5x5" or environment == "diamond_5x5":
             return "groups.txt"
         elif environment == "amsterdam" or environment == "xian":
             return "price_groups_5.txt"
