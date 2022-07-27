@@ -1,6 +1,7 @@
 import argparse
 import torch
 import numpy as np
+import sys
 
 from constraints import ForwardConstraints
 from environment import Environment
@@ -55,7 +56,6 @@ if __name__ == "__main__":
     parser.add_argument('--reward', default='weighted', type=str)
     parser.add_argument('--ses_weight', default=0, type=float)  # weight to assign to the socio-economic status (equity)reward, only works for --reward=weighted
     parser.add_argument('--var_lambda', default=0, type=float)  # weight to assign to the variance of the satisfied OD among groups, only works for --reward=group
-    parser.add_argument('--reward_scaling_fn', default=None, type=str, choices=["linear", "inverse"])
     parser.add_argument('--ggi_weight', default=2, type=float) # weight to assign when calculating the ggi of the satisfied OD among groups, only works for --reward=ggi
 
     parser.add_argument('--groups_file', default=None, type=str)  # file that contains group membership of each grid square (e.g. when each square belongs to a certain income bin).
@@ -66,11 +66,16 @@ if __name__ == "__main__":
     parser.add_argument('--early_stopping', default=0, type=int,
                         help="stop training if the amount of consecutive epochs without improvement of the best score is higher than this argument (0 is off).")
 
+    # These commands will change to a different actor logic that incorporates the feasability constraints into the reward function
+    parser.add_argument('--constraint_free', action='store_true', default=False)
+    parser.add_argument('--cf_reward_scaling', default="linear", type=str, choices=["linear", "inverse"])
+    parser.add_argument('--cf_minimum_station_od')
+
     args = parser.parse_args()
 
     if args.seed:
         set_seed(args.seed)
-    environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file, reward_scaling_fn=args.reward_scaling_fn)
+    environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file, reward_scaling_fn=args.cf_reward_scaling)
     constraints = ForwardConstraints(environment.grid_x_size, environment.grid_y_size, environment.existing_lines_full, environment.grid_to_vector)
     trainer = Trainer(environment, constraints, args)
 

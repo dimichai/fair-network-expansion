@@ -71,7 +71,7 @@ class Trainer(object):
         else:
             raise NotImplementedError("{} not available as actor architecture.".format(args.arch))
         print(f"Number of trainable parameters actor-critic: {actor_module.nr_parameters} / {critic_module.nr_parameters}")
-        if args.reward_scaling_fn == None:
+        if not args.constraint_free:
             self.actor = DRL4Metro(actor_module,
                                 update_dynamic,
                                 environment.update_mask,
@@ -103,7 +103,7 @@ class Trainer(object):
             
 
         for i in range(line_g.shape[1]):
-            data[line_g[0, i], line_g[1, i]] = i
+            data[line_g[0, i], line_g[1, i]] = i+1
 
         return data
 
@@ -167,7 +167,7 @@ class Trainer(object):
                                                  line_unit_price=args.line_unit_price, station_price=args.station_price,
                                                  decoder_input=None, last_hh=None)
 
-                reward = od_utility(tour_idx, self.environment, args.reward_scaling_fn != None)
+                reward = od_utility(tour_idx, self.environment, args.constraint_free)
                 od_list.append(reward.item())
                 ses_reward = torch.zeros(1)
                 if args.reward == 'weighted':
@@ -196,7 +196,7 @@ class Trainer(object):
                 critic_loss += per_critic_loss
                 rewards_sum += reward
                 
-                if args.reward_scaling_fn:
+                if args.constraint_free:
                     scale_m = self.environment.matrix_reward_scaling(tour_idx)
                     scale_m_mean = scale_m[torch.nonzero(scale_m, as_tuple=True)].mean()
                     scale_factor += scale_m_mean if not torch.isnan(scale_m_mean) else 0
@@ -228,7 +228,7 @@ class Trainer(object):
             critic_optim.step()
 
             cost_time = time.time() - epoch_start
-            if args.reward_scaling_fn:
+            if args.constraint_free:
                 print('epoch %d, average_reward: %2.3f, actor_loss: %2.4f,  sf: %2.4f, ll: %2.2f, critic_loss: %2.4f, cost_time: %2.4fs'
                       % (epoch, avg_reward.item(), actor_loss.item(), avg_scale_factor.item(), avg_line_len, critic_loss.item(), cost_time))
             else:
