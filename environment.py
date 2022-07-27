@@ -145,9 +145,19 @@ class Environment(object):
         od_mask[sat_od_pairs[:, 0], sat_od_pairs[:, 1]] = 1
         
         return od_mask
+
+    def cf_reward(self, tour_idx: torch.Tensor):
+        sat_od_mask = self.satisfied_od_mask_cf(tour_idx)
+        # od_i = (self.od_mx * sat_od_mask).sum(axis=1)
+        # od_i_mask = torch.zeros(self.grid_size).to(device)
+        # od_i_mask[tour_idx] = 1
+        # new_reward = self.efficient_station_fn(od_i_mask, od_i).sum()
+        reward = (self.od_mx * sat_od_mask).sum()
+
+        return self.efficient_station_fn(tour_idx, reward)
     
 
-    def matrix_reward_scaling(self, tour_idx: torch.Tensor):
+    def satisfied_od_mask_cf(self, tour_idx: torch.Tensor):
         tour_idx = tour_idx[0].flatten()
         tour_dict = {(s1, s2): tour_idx[i:j+1] for i, s1 in enumerate(tour_idx) for j, s2 in enumerate(tour_idx) if i != j and i < j}
         od_scaling_mask = torch.zeros(self.grid_size, self.grid_size, device=device)
@@ -176,7 +186,7 @@ class Environment(object):
         else:
             return None
 
-    def __init__(self, env_path, groups_file=None, reward_scaling_fn=None):
+    def __init__(self, env_path, groups_file=None, reward_scaling_fn=None, efficient_station_fn=None):
         """Initialise city environment.
 
         Args:
@@ -270,6 +280,23 @@ class Environment(object):
             self.reward_scaling_fn = lambda d_eucl, d_tour: torch.nn.functional.relu(d_eucl/d_tour)
         elif reward_scaling_fn == "linear":
             self.reward_scaling_fn = lambda d_eucl, d_tour: torch.nn.functional.relu(1 - ((d_tour-1)/d_eucl))
+
+        # Set the right efficient station function for renewed reward function
+        # if efficient_station_fn == None:
+            # self.efficient_station_fn = lambda od_i_mask, od_i: od_i
+        # elif efficient_station_fn == "constant":
+            # c = 0.00001 * self.od_mx.sum()
+            # self.efficient_station_fn = lambda od_i_mask, od_i: -od_i_mask * c + od_i
+        # elif efficient_station_fn == "ratio":
+            # self.efficient_station_fn = lambda od_i_mask, od_i: od_i / od_i_mask.sum()
+
+        if efficient_station_fn == None:
+            self.efficient_station_fn = lambda tour_idx, reward: reward
+        elif efficient_station_fn == "constant":
+            c = 0.00001 * self.od_mx.sum()
+            self.efficient_station_fn = lambda tour_idx, reward: reward - c * len(tour_idx)
+        elif efficient_station_fn == "ratio":
+            self.efficient_station_fn = lambda tour_idx, reward: reward / len(tour_idx)
 
         # Create the static representation of the grid coordinates - to be used by the actor.
         xs, ys = [], []

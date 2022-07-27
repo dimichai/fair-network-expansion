@@ -197,7 +197,7 @@ class Trainer(object):
                 rewards_sum += reward
                 
                 if args.constraint_free:
-                    scale_m = self.environment.matrix_reward_scaling(tour_idx)
+                    scale_m = self.environment.satisfied_od_mask_cf(tour_idx)
                     scale_m_mean = scale_m[torch.nonzero(scale_m, as_tuple=True)].mean()
                     scale_factor += scale_m_mean if not torch.isnan(scale_m_mean) else 0
 

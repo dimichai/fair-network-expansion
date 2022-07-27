@@ -69,13 +69,13 @@ if __name__ == "__main__":
     # These commands will change to a different actor logic that incorporates the feasability constraints into the reward function
     parser.add_argument('--constraint_free', action='store_true', default=False)
     parser.add_argument('--cf_reward_scaling', default="linear", type=str, choices=["linear", "inverse"])
-    parser.add_argument('--cf_minimum_station_od')
+    parser.add_argument('--cf_efficient_station', default=None, type=str, choices=["constant", "ratio"])
 
     args = parser.parse_args()
 
     if args.seed:
         set_seed(args.seed)
-    environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file, reward_scaling_fn=args.cf_reward_scaling)
+    environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file, reward_scaling_fn=args.cf_reward_scaling, efficient_station_fn=args.cf_efficient_station)
     constraints = ForwardConstraints(environment.grid_x_size, environment.grid_y_size, environment.existing_lines_full, environment.grid_to_vector)
     trainer = Trainer(environment, constraints, args)
 
