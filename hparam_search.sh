@@ -46,8 +46,7 @@ do
                                             --actor_lr $alr \
                                             --critic_lr $alr \
                                             --actor_mlp_layers $alay \
-                                            --critic_mlp_layers $clay \
-                                            --early_stopping 20"
+                                            --critic_mlp_layers $clay "
                         if [ $PRINT_ONLY -eq 0 ]; then
                             eval "$cmd 2>/dev/null \
                                     | grep 'Average.*flows:\|Number' \
