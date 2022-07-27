@@ -135,8 +135,8 @@ class Trainer(object):
             with open(save_dir / 'args.txt', 'w') as f:
                 json.dump(vars(args), f, indent=2) 
 
-        if not os.path.exists(save_dir / "first_station"):
-            os.makedirs(save_dir / "first_station")
+        # if not os.path.exists(save_dir / "first_station"):
+        #     os.makedirs(save_dir / "first_station")
 
         # Save result and checkpoint folder for evaluation
         self.save_dir = save_dir
@@ -329,7 +329,6 @@ class Trainer(object):
         for _ in range(args.train_size):
             with torch.no_grad():
                 tour_idx, _ = self.actor(static, dynamic, args.station_num_lim, decoder_input=None, last_hh=None)
-                print(tour_idx)
                 gen_lines.append(tour_idx)
 
         if not args.no_log:
