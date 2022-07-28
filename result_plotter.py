@@ -1,6 +1,7 @@
 #%% This is made as a jupyter notebook, it is made to be ran in the VSCODE interactive mode.
 # But it still can be ran as a python file.
 from collections import defaultdict
+from genericpath import isfile
 from pathlib import Path
 from typing import List
 import matplotlib.pyplot as plt
@@ -48,7 +49,10 @@ def prepare_metrics_df(models: List):
     
     df_metrics = pd.DataFrame(metrics)
     # df_args = pd.DataFrame(args)
-    return pd.merge(args, df_metrics, how='right', on='model')
+    if args.shape[0] > 0:
+        return pd.merge(args, df_metrics, how='right', on='model')
+    else:
+        return df_metrics
 
 #%% PLOT DILEMMA RESULTS
 # Paths of models to evalute
@@ -133,7 +137,9 @@ fig.colorbar(im0, orientation='vertical', fraction=0.046, pad=0.04)
 ax.set_title('(A) Aggregate Origin-Destination Flow')
 
 # %% PLOT XIAN RESULTS
-metrics_xian = prepare_metrics_df(['old_xian_16_01_47.060823', 'old_xian_16_03_51.724205', 'old_xian_10_48_03.743589', 'old_xian_16_22_50.580720'])
+xian = Environment(Path(f"./environments/xian/"), groups_file='price_groups_5.txt')
+# metrics_xian = prepare_metrics_df(['old_xian_16_01_47.060823', 'old_xian_16_03_51.724205', 'old_xian_10_48_03.743589', 'old_xian_16_22_50.580720'])
+metrics_xian = prepare_metrics_df(['old_xian_16_22_50.580720', 'old_xian_10_48_03.743589'])
 # %%
 # https://stackoverflow.com/questions/10369681/how-to-plot-bar-graphs-with-same-x-coordinates-side-by-side-dodged
 groups_1 = metrics_xian.loc[metrics_xian['model'] == 'old_xian_16_22_50.580720'].iloc[0]['mean_sat_od_by_group_pct']
@@ -159,16 +165,76 @@ plt.xticks(ind + width / 2, ('1st quintile', '2nd', '3rd', '4th', '5th'))
 # Finding the best position for legends and putting it
 plt.legend(loc='best')
 plt.show()
-plt.savefig('./')
+# plt.savefig('./')
+
+#%% plot lines
+fig, ax = plt.subplots(figsize=(15, 10))
+
+im1 = ax.imshow(xian.grid_groups, cm.get_cmap('viridis'))
+labels = ['1st quintile', '2nd quintile', '3rd quintile', '4th quintile', '5th quintile']
+values = (np.unique(xian.grid_groups[~np.isnan(xian.grid_groups)]))
+colors = [ im1.cmap(im1.norm(value)) for value in values]
+patches = [ mpatches.Patch(color=colors[i], label=labels[i] ) for i in range(len(labels)) ]
+ax.legend(handles=patches, loc="lower right", prop={'size': 14})
+ax.set_title('Generated Lines', fontsize=32)
+
+lines = [torch.tensor([[287,315,314,313,312,311,310,339,338,367,366,395,394,393,392,391,420,419,448,477,476,505,534,563,562,561,590,589,588,587,616,645,644,643,642,671,670,699,728,786,815,814,813,812]]),
+    torch.tensor([[812,756,700,644,587,588,559,530,501,502,503,504,505,476,447,418,389,360,361,332,333,334,305,306,277,278,279,250,221,222,223,224,195,196,197,168,169,170,171,172,173,144,115,86,57]])
+    ]
+
+colors = ['#71A3F7', '#FE6361']
+for i, l in enumerate(lines):
+    # Note here we reverse the dimensions because on scatter plots the horizontal axis is the x axis.
+    l_v = xian.vector_to_grid(l).cpu()
+    label = "_no_legend"
+    if i == 0:
+        label = "Generated Metro Lines"
+
+    ax.plot(l_v[1], l_v[0], '-o', color=colors[i], label=label, alpha=1, markersize=12, linewidth=4)
+
+# ax.legend()
+
+fig.tight_layout()
 
 # %% PLOT AMSTERDAM RESULTS
-# models = ['amsterdam_20220708_11_21_23.191428']
-models = []
-paths  = [ f.path for f in os.scandir('./result') if f.is_dir() ]
-for p in paths:
-    if 'amsterdam' in p:
-        models.append(p.split('/')[-1])
+models = ['amsterdam_20220708_11_21_23.191428', 'amsterdam_20220706_14_01_39.431117']
+# amsterdam_20220706_14_01_39.431117  -- Rawls
+# 
+# models = ['amsterdam_20220706_14_01_39.431117']
+import matplotlib.patches as mpatches
+
+amsterdam = Environment(Path(f"./environments/amsterdam/"), groups_file='price_groups_5.txt')
+# models = []
+# paths  = [ f.path for f in os.scandir('./result') if f.is_dir() ]
+# for p in paths:
+    # if 'amsterdam' in p:
+        # models.append(p.split('/')[-1])
 
 metrics = prepare_metrics_df(models)
-metrics.to_csv('./amsterdam_results.csv', index=False)
-# %%
+# metrics = metrics.iloc[0] # TODO delete
+
+#%%
+# fig, ax = plt.subplots(figsize=(15, 10))
+
+# im1 = ax.imshow(amsterdam.grid_groups, cm.get_cmap('viridis'))
+# labels = ['1st quintile', '2nd quintile', '3rd quintile', '4th quintile', '5th quintile']
+# values = (np.unique(amsterdam.grid_groups[~np.isnan(amsterdam.grid_groups)]))
+# colors = [ im1.cmap(im1.norm(value)) for value in values]
+# patches = [ mpatches.Patch(color=colors[i], label=labels[i] ) for i in range(len(labels)) ]
+# ax.legend(handles=patches, loc="lower left", prop={'size': 14})
+# ax.set_title('(B) House Price Index Quintiles')
+
+# # for i, l in enumerate(metrics['avg_generated_line'][0]):
+# for i, l in enumerate(metrics['avg_generated_line'].tolist()):
+#     # Note here we reverse the dimensions because on scatter plots the horizontal axis is the x axis.
+#     label = "_no_legend"
+#     if i == 0:
+#         label = "Generated Metro Lines"
+
+#     ax.plot(l[1], l[0], '-ok', label=label)
+
+# ax.legend()
+
+# fig.tight_layout()
+# # metrics.to_csv('./amsterdam_results.csv', index=False)
+# # %%
