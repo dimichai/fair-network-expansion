@@ -281,6 +281,7 @@ class Trainer(object):
                 ax.imshow(plot_grid)
                 fig.suptitle(f'{args.environment} - Average Generated line \n from {args.result_path}')
                 fig.savefig(Path(plot_dir, f'{epoch}.png'))
+                plt.close(fig)
             
             # stop if the avg reward is 10 times the same
             if args.early_stopping and early_stopping > args.early_stopping:
