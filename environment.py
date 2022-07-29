@@ -276,10 +276,10 @@ class Environment(object):
                 self.od_mx[exclude_pairs[:, 0], exclude_pairs[:, 1]] = 0
 
         # Set the right scaling function for renewed reward function
-        if reward_scaling_fn == "inverse":
-            self.reward_scaling_fn = lambda d_eucl, d_tour: torch.nn.functional.relu(d_eucl/d_tour)
-        elif reward_scaling_fn == "linear":
+        if reward_scaling_fn == "linear":
             self.reward_scaling_fn = lambda d_eucl, d_tour: torch.nn.functional.relu(1 - ((d_tour-1)/d_eucl))
+        if reward_scaling_fn == "parabolic":
+            self.reward_scaling_fn = lambda d_eucl, d_tour: torch.sqrt(torch.nn.functional.relu(1 - ((d_tour-1)/d_eucl)))
 
         # Set the right efficient station function for renewed reward function
         # if efficient_station_fn == None:

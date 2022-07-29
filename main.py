@@ -68,7 +68,7 @@ if __name__ == "__main__":
 
     # These commands will change to a different actor logic that incorporates the feasability constraints into the reward function
     parser.add_argument('--constraint_free', action='store_true', default=False)
-    parser.add_argument('--cf_reward_scaling', default="linear", type=str, choices=["linear", "inverse"])
+    parser.add_argument('--cf_reward_scaling', default="linear", type=str, choices=["linear", "parabolic"])
     parser.add_argument('--cf_efficient_station', default=None, type=str, choices=["constant", "ratio"])
 
     parser.add_argument('--plot_every', type=int, default=10)
