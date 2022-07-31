@@ -157,14 +157,14 @@ class Environment(object):
         return od_mask
 
     def cf_reward(self, tour_idx: torch.Tensor):
+        # Apply the F2 mask to the od matrix satisfied demand
         sat_od_mask = self.satisfied_od_mask_cf(tour_idx)
+        reward = (self.od_mx * sat_od_mask).sum()
+        # TODO find a way to apply the efficient station and station density function
         # od_i = (self.od_mx * sat_od_mask).sum(axis=1)
         # od_i_mask = torch.zeros(self.grid_size).to(device)
         # od_i_mask[tour_idx] = 1
         # new_reward = self.efficient_station_fn(od_i_mask, od_i).sum()
-        reward = (self.od_mx * sat_od_mask).sum()
-        
-        
         # print(p_ij_mx)
         return reward
 
@@ -205,7 +205,8 @@ class Environment(object):
         else:
             return None
 
-    def __init__(self, env_path, groups_file=None, reward_scaling_fn=None, efficient_station_fn=None, dmin=None, dmax=None):
+    def __init__(self, env_path, groups_file=None, reward_scaling_fn=None, efficient_station_fn=None, 
+                 station_density_fn=None, dmin=None, dmax=None):
         """Initialise city environment.
 
         Args:
@@ -295,40 +296,38 @@ class Environment(object):
             
                 self.od_mx[exclude_pairs[:, 0], exclude_pairs[:, 1]] = 0
 
-        # Set the right scaling function for renewed reward function
+        # Set the scaling function for renewed reward function
         if reward_scaling_fn == "linear":
-            self.reward_scaling_fn = lambda d_eucl, d_tour: torch.nn.functional.relu(1 - ((d_tour-1)/d_eucl))
+            c = 1
+            self.reward_scaling_fn = lambda d_eucl, d_tour: torch.nn.functional.relu(1 - ((d_tour-1)/c*d_eucl))
         elif reward_scaling_fn == "parabolic":
-            self.reward_scaling_fn = lambda d_eucl, d_tour: torch.sqrt(torch.nn.functional.relu(1 - ((d_tour-1)/d_eucl)))
+            c = 1
+            self.reward_scaling_fn = lambda d_eucl, d_tour: torch.sqrt(torch.nn.functional.relu(1 - ((d_tour-1)/c*d_eucl)))
 
-        # Set the right efficient station function for renewed reward function
-        # if efficient_station_fn == None:
-            # self.efficient_station_fn = lambda od_i_mask, od_i: od_i
-        # elif efficient_station_fn == "constant":
-            # c = 0.00001 * self.od_mx.sum()
-            # self.efficient_station_fn = lambda od_i_mask, od_i: -od_i_mask * c + od_i
-        # elif efficient_station_fn == "ratio":
-            # self.efficient_station_fn = lambda od_i_mask, od_i: od_i / od_i_mask.sum()
-
+        # Set the efficient station function for renewed reward function
         if efficient_station_fn == None:
             self.efficient_station_fn = lambda tour_idx, reward: reward
         elif efficient_station_fn == "constant":
+            print("The use of the efficient station function is discouraged. It does not align wel will the MNEP problem")
             c = 0.00001 * self.od_mx.sum()
             self.efficient_station_fn = lambda tour_idx, reward: reward - c * len(tour_idx)
         elif efficient_station_fn == "ratio":
+            print("The use of the efficient station function is discouraged. It does not align wel will the MNEP problem")
             self.efficient_station_fn = lambda tour_idx, reward: reward / len(tour_idx)
 
-        # Set the right function for station density regulation
-        if dmin and dmax:
+        # Set the function for station density regulation
+        if station_density_fn:
             assert dmin > 0
             assert dmax > dmin
-            desired_mu = torch.Tensor([(dmin + dmax) / 2]).to(device)
-            desired_var = torch.Tensor([(dmax - dmin) / 2]).to(device)
-            mu =  torch.log(desired_mu**2 / (torch.sqrt(desired_mu**2 + desired_var)))
-            var =  torch.log(1 + (desired_var / desired_mu**2))
-            const = torch.sqrt(2*np.pi*var).to(device)
-            self.sigmoid = lambda x: 1 / (1 + torch.exp(-20(x-dmin)))
-            self.log_gaussian = lambda x: 1 / (x * const) * torch.exp((-(torch.log(x)-mu)**2)/(2*var))
+            self.station_density_fn = lambda x: 1 / (1 + torch.exp(-20(x-dmin)))
+            # desired_mu = torch.Tensor([(dmin + dmax) / 2]).to(device)
+            # desired_var = torch.Tensor([(dmax - dmin) / 2]).to(device)
+            # mu =  torch.log(desired_mu**2 / (torch.sqrt(desired_mu**2 + desired_var)))
+            # var =  torch.log(1 + (desired_var / desired_mu**2))
+            # const = torch.sqrt(2*np.pi*var).to(device)
+            # self.log_gaussian = lambda x: 1 / (x * const) * torch.exp((-(torch.log(x)-mu)**2)/(2*var))
+        elif station_density_fn == None:
+            self.station_density_fn = lambda x : x
 
         # Create the static representation of the grid coordinates - to be used by the actor.
         xs, ys = [], []
