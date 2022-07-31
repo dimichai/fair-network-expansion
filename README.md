@@ -41,3 +41,7 @@ The RNN achitecture can be run as follows:
 python main.py --seed 20 --environment diagonal_5x5 --groups_file groups.txt --arch rnn --epoch_max 60 --test
 ```
 Adding attention to this model is done by changing `--arch rnn` to `--arch rnn-att`.
+
+
+## Constraint into reward function
+To change the reward function to incorporate (some) constraints, use the argument `--constraint_free`. This will activate the reward scaling `--cf_reward_scaling` by default to be a linear function, since this is essential to the function of the model. This is based on the smooth line objective. Other options are the `--cf_efficient_station` (which should not be used) and the `--cf_station_density` arguments.
