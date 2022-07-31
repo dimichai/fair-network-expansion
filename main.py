@@ -70,6 +70,8 @@ if __name__ == "__main__":
     parser.add_argument('--constraint_free', action='store_true', default=False)
     parser.add_argument('--cf_reward_scaling', default="linear", type=str, choices=["linear", "parabolic"])
     parser.add_argument('--cf_efficient_station', default=None, type=str, choices=["constant", "ratio"])
+    parser.add_argument('--cf_dmin', default=None, type=float)
+    parser.add_argument('--cf_dmax', default=None, type=float)
 
     parser.add_argument('--plot_every', type=int, default=10)
 
@@ -77,7 +79,7 @@ if __name__ == "__main__":
 
     if args.seed:
         set_seed(args.seed)
-    environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file, reward_scaling_fn=args.cf_reward_scaling, efficient_station_fn=args.cf_efficient_station)
+    environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file, reward_scaling_fn=args.cf_reward_scaling, efficient_station_fn=args.cf_efficient_station, dmin=args.cf_dmin, dmax=args.cf_dmax)
     constraints = ForwardConstraints(environment.grid_x_size, environment.grid_y_size, environment.existing_lines_full, environment.grid_to_vector)
     trainer = Trainer(environment, constraints, args)
 

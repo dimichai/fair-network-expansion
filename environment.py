@@ -69,6 +69,16 @@ class Environment(object):
         # grid_x = grid_x.unsqueeze(dim=0)
         # grid_y = grid_y.unsqueeze(dim=0)
         return torch.cat((grid_x, grid_y), dim=0)#.transpose(-1, -2)
+
+    def vector_to_grid_batched(self, batch_nodes):
+        grid_x = (batch_nodes // self.grid_y_size)
+        grid_y = (batch_nodes % self.grid_y_size)
+        return torch.cat((grid_x, grid_y), dim=0).transpose(0,1)
+
+    def station_distance_matrix(self, tour_idx):
+        tour_grid = self.vector_to_grid_batched(tour_idx).float()
+        d_mx = torch.cdist(tour_grid, tour_grid)
+        return d_mx
         
     def process_lines(self, lines):
         """Creates a list of tensors for each line, from given grid indices. Used to create line/segment representations of metro lines.
@@ -153,9 +163,18 @@ class Environment(object):
         # od_i_mask[tour_idx] = 1
         # new_reward = self.efficient_station_fn(od_i_mask, od_i).sum()
         reward = (self.od_mx * sat_od_mask).sum()
+        
+        
+        # print(p_ij_mx)
+        return reward
 
-        return self.efficient_station_fn(tour_idx, reward)
-    
+
+        # return self.efficient_station_fn(tour_idx, reward)
+
+    def c1_od_mask(self, tour_idx: torch.Tensor):
+        od_scaling_mask = torch.zeros(self.grid_size, self.grid_size, device=device)
+        d_ij_mx = self.station_distance_matrix(tour_idx)
+        p_ij_mx = self.sigmoid(d_ij_mx)
 
     def satisfied_od_mask_cf(self, tour_idx: torch.Tensor):
         tour_idx = tour_idx[0].flatten()
@@ -186,7 +205,7 @@ class Environment(object):
         else:
             return None
 
-    def __init__(self, env_path, groups_file=None, reward_scaling_fn=None, efficient_station_fn=None):
+    def __init__(self, env_path, groups_file=None, reward_scaling_fn=None, efficient_station_fn=None, dmin=None, dmax=None):
         """Initialise city environment.
 
         Args:
@@ -194,6 +213,7 @@ class Environment(object):
             groups_file (str): file within envirnoment folder that contains group membership for each grid square.
         """
         super(Environment, self).__init__()
+        print(reward_scaling_fn)
 
         if not groups_file:
             groups_file = self.get_groups_file(str(env_path).split("/")[-1])
@@ -278,7 +298,7 @@ class Environment(object):
         # Set the right scaling function for renewed reward function
         if reward_scaling_fn == "linear":
             self.reward_scaling_fn = lambda d_eucl, d_tour: torch.nn.functional.relu(1 - ((d_tour-1)/d_eucl))
-        if reward_scaling_fn == "parabolic":
+        elif reward_scaling_fn == "parabolic":
             self.reward_scaling_fn = lambda d_eucl, d_tour: torch.sqrt(torch.nn.functional.relu(1 - ((d_tour-1)/d_eucl)))
 
         # Set the right efficient station function for renewed reward function
@@ -297,6 +317,18 @@ class Environment(object):
             self.efficient_station_fn = lambda tour_idx, reward: reward - c * len(tour_idx)
         elif efficient_station_fn == "ratio":
             self.efficient_station_fn = lambda tour_idx, reward: reward / len(tour_idx)
+
+        # Set the right function for station density regulation
+        if dmin and dmax:
+            assert dmin > 0
+            assert dmax > dmin
+            desired_mu = torch.Tensor([(dmin + dmax) / 2]).to(device)
+            desired_var = torch.Tensor([(dmax - dmin) / 2]).to(device)
+            mu =  torch.log(desired_mu**2 / (torch.sqrt(desired_mu**2 + desired_var)))
+            var =  torch.log(1 + (desired_var / desired_mu**2))
+            const = torch.sqrt(2*np.pi*var).to(device)
+            self.sigmoid = lambda x: 1 / (1 + torch.exp(-20(x-dmin)))
+            self.log_gaussian = lambda x: 1 / (x * const) * torch.exp((-(torch.log(x)-mu)**2)/(2*var))
 
         # Create the static representation of the grid coordinates - to be used by the actor.
         xs, ys = [], []
