@@ -1,7 +1,6 @@
 import argparse
 import torch
 import numpy as np
-import sys
 
 from constraints import ForwardConstraints
 from environment import Environment
@@ -68,8 +67,9 @@ if __name__ == "__main__":
 
     # These commands will change to a different actor logic that incorporates the feasability constraints into the reward function
     parser.add_argument('--constraint_free', action='store_true', default=False)
-    parser.add_argument('--cf_reward_scaling', default="linear", type=str, choices=["linear", "parabolic"])
+    parser.add_argument('--cf_reward_scaling', default="linear", type=str, choices=["linear", "parabolic"])  # This is required for cf to function at all
     parser.add_argument('--cf_efficient_station', default=None, type=str, choices=["constant", "ratio"])
+    parser.add_argument('--cf_station_density', default=None, type=str, choices=["sigmoid"])
     parser.add_argument('--cf_dmin', default=None, type=float)
     parser.add_argument('--cf_dmax', default=None, type=float)
 
@@ -79,7 +79,13 @@ if __name__ == "__main__":
 
     if args.seed:
         set_seed(args.seed)
-    environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file, reward_scaling_fn=args.cf_reward_scaling, efficient_station_fn=args.cf_efficient_station, dmin=args.cf_dmin, dmax=args.cf_dmax)
+    environment = Environment(Path(f"./environments/{args.environment}"),
+                              groups_file=args.groups_file,
+                              reward_scaling_fn=args.cf_reward_scaling,
+                              efficient_station_fn=args.cf_efficient_station,
+                              station_density_fn=args.cf_station_density,
+                              dmin=args.cf_dmin,
+                              dmax=args.cf_dmax)
     constraints = ForwardConstraints(environment.grid_x_size, environment.grid_y_size, environment.existing_lines_full, environment.grid_to_vector)
     trainer = Trainer(environment, constraints, args)
 

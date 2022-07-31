@@ -1,7 +1,6 @@
 from environment import Environment
 import torch
 from utils import gini_tensor, gini
-from typing import Callable
 
 from constants import device
 
