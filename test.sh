@@ -10,6 +10,8 @@ if [[ -d $1 ]]
 then
     # Remove the checkpoint path, result_path and test flags
     args=$(cat "$1/args.txt" | grep -v -e checkpoint -e result_path -e null -e test -e false)
+    # Remove 'true'
+    args=$(echo $args | sed 's/true//g')
     # Remove special characters
     args=$(echo $args | sed 's/[":{}]//g')
     # Replace , with -- (and add a comma to the beginning of args)
