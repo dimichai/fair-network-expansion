@@ -364,7 +364,8 @@ class Trainer(object):
         for i, line in enumerate(gen_lines):
             # Evaluate ODs
             sat_od_mask = self.environment.satisfied_od_mask(line)
-            satisfied_ods[i] = (sat_od_mask * self.environment.od_mx).sum().item()
+            # satisfied_ods[i] = (sat_od_mask * self.environment.od_mx).sum().item()
+            satisfied_ods[i] = od_utility(tour_idx, self.environment, args.constraint_free)
 
             # Evaluate average distance to nearest public transport station.
             # Manhattan distance between each grid cell and the average generated line.
