@@ -298,10 +298,10 @@ class Environment(object):
         # Set the scaling function for renewed reward function
         if reward_scaling_fn == "linear":
             c = 1
-            self.reward_scaling_fn = lambda d_eucl, d_tour: torch.nn.functional.relu(1 - ((d_tour-1)/c*d_eucl))
+            self.reward_scaling_fn = lambda d_eucl, d_tour: torch.nn.functional.relu(2 - (d_tour/(c*d_eucl)))
         elif reward_scaling_fn == "parabolic":
             c = 1
-            self.reward_scaling_fn = lambda d_eucl, d_tour: torch.sqrt(torch.nn.functional.relu(1 - ((d_tour-1)/c*d_eucl)))
+            self.reward_scaling_fn = lambda d_eucl, d_tour: torch.sqrt(torch.nn.functional.relu(2 - (d_tour/(c*d_eucl))))
 
         # Set the efficient station function for renewed reward function
         if efficient_station_fn == None:
