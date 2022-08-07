@@ -29,6 +29,7 @@ if __name__ == "__main__":
     parser.add_argument('--budget', default=210, type=int)
     parser.add_argument('--max_grad_norm', default=2., type=float)
     parser.add_argument('--environment', default='diagonal_5x5', type=str)
+    parser.add_argument('--ignore_existing_lines', action='store_true', default=False) # if true, the agent will build a line from scratch, ignoring what already the city has
     # reward types:
         # - weighted: a weighted sum of OD and equity reward -> --ses_weight * r_ses + (1-ses_weight) * r_od
         # - group: ODs are measured/regularized by group (see --groups_file), not a single OD.
@@ -46,7 +47,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file)
+    environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file, ignore_existing_lines=args.ignore_existing_lines)
     constraints = ForwardConstraints(environment.grid_x_size, environment.grid_y_size, environment.existing_lines_full, environment.grid_to_vector)
     trainer = Trainer(environment, constraints, args)
 

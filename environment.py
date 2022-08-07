@@ -144,12 +144,13 @@ class Environment(object):
         
         return od_mask
 
-    def __init__(self, env_path, groups_file=None):
+    def __init__(self, env_path, groups_file=None, ignore_existing_lines=False):
         """Initialise city environment.
 
         Args:
             env_path (Path): path to the folder that contains the needed initialisation files of the environment.
             groups_file (str): file within envirnoment folder that contains group membership for each grid square.
+            ignore_existing_lines (boolean): if set to true, the environment will not load the current existing lines of the environment (check config.txt).
         """
         super(Environment, self).__init__()
 
@@ -200,7 +201,7 @@ class Environment(object):
                 self.group_od_mx.append(group_mask * self.od_mx)
 
         # Read existing metro lines of the environment.
-        if config.has_option('config', 'existing_lines'):
+        if not ignore_existing_lines and config.has_option('config', 'existing_lines'):
             # json is used to load lists from ConfigParser as there is no built in way to do it.
             existing_lines = self.process_lines(json.loads(config.get('config', 'existing_lines')))
             # Full lines contains the lines + the squares between consecutive stations e.g. if line is (0,0)-(0,2)-(2,2) then full line also includes (0,1), (1,2).
