@@ -103,7 +103,10 @@ class Trainer(object):
                 os.makedirs(checkpoint_dir)
 
             with open(save_dir / 'args.txt', 'w') as f:
-                json.dump(vars(args), f, indent=2) 
+                # log the number of existing lines as a parameter.
+                args_dict = vars(args)
+                args_dict['existing_lines'] = len(self.environment.existing_lines)
+                json.dump(args_dict, f, indent=2) 
 
         actor_optim = optim.Adam(self.actor.parameters(), lr=args.actor_lr)
         critic_optim = optim.Adam(self.critic.parameters(), lr=args.critic_lr)
