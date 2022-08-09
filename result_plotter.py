@@ -292,3 +292,42 @@ plt.xticks(ind + width / 2, ('1st quintile', '2nd', '3rd', '4th', '5th'))
 plt.legend(loc='best')
 plt.show()
 # %%
+
+def plot_lines(env: Environment, lines: list, line_colors: list):
+    fig, ax = plt.subplots(figsize=(15, 10))    
+    im1 = ax.imshow(env.grid_groups, cm.get_cmap('viridis'))
+    labels = ['1st quintile', '2nd quintile', '3rd quintile', '4th quintile', '5th quintile']
+    values = (np.unique(env.grid_groups[~np.isnan(env.grid_groups)]))
+    grid_colors = [ im1.cmap(im1.norm(value)) for value in values]
+    patches = [ mpatches.Patch(color=grid_colors[i], label=labels[i] ) for i in range(len(labels)) ]
+    ax.legend(handles=patches, loc="lower right", prop={'size': 14})
+    ax.set_title('Generated Lines', fontsize=32)
+
+    for i, l in enumerate(lines):
+        # Note here we reverse the dimensions because on scatter plots the horizontal axis is the x axis.
+        l_v = env.vector_to_grid(l).cpu()
+        label = "_no_legend"
+        if i == 0:
+            label = "Generated Metro Lines"
+
+        ax.plot(l_v[1], l_v[0], '-o', color=line_colors[i], label=label, alpha=1, markersize=12, linewidth=4)
+
+    fig.tight_layout()
+    return fig
+
+
+
+lines = [torch.tensor([[287,315,314,313,312,311,310,339,338,367,366,395,394,393,392,391,420,419,448,477,476,505,534,563,562,561,590,589,588,587,616,645,644,643,642,671,670,699,728,786,815,814,813,812]]),
+    torch.tensor([[812,756,700,644,587,588,559,530,501,502,503,504,505,476,447,418,389,360,361,332,333,334,305,306,277,278,279,250,221,222,223,224,195,196,197,168,169,170,171,172,173,144,115,86,57]])
+    ]
+colors = ['#71A3F7', '#FE6361']
+plot_lines(xian, lines, colors)
+
+
+#%% Plot Amsterdam Lines
+
+lines = [torch.tensor([[1097,1050,1051,1004,1005,958,959,912,865,866,819,772,773,726,727,728,681,682,635,636]]),
+    torch.tensor([[436,532,533,580,627,674,675,722,723,724,725,772,773,820,821,868,869,870,871,872]])
+    ]
+colors = ['#71A3F7', '#FE6361']
+plot_lines(amsterdam, lines, colors)
