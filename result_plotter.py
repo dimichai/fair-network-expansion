@@ -266,7 +266,8 @@ def bar_plot(model_names, model_types, model_colors, model_hatches, metrics_df: 
     fig.legend()
     # return fig
 
-fig = bar_plot(models[:3], model_types[:3], ['#71a3f7', '#ff6361', '#932DFB'], ['', '///', '+'], metrics_ams, 'Amsterdam')
+ams_colors = ['#71a3f7', '#ff6361', '#932DFB', 'gray', 'black']
+fig = bar_plot(models[:3], model_types[:3], ams_colors, ['', '///', '+'], metrics_ams, 'Amsterdam')
 #%%
 groups_1 = metrics_ams.loc[metrics_ams['model'] == models[0]].iloc[0]['mean_sat_od_by_group_pct']
 groups_2 = metrics_ams.loc[metrics_ams['model'] == models[1]].iloc[0]['mean_sat_od_by_group_pct']
@@ -292,42 +293,67 @@ plt.xticks(ind + width / 2, ('1st quintile', '2nd', '3rd', '4th', '5th'))
 plt.legend(loc='best')
 plt.show()
 # %%
-
-def plot_lines(env: Environment, lines: list, line_colors: list):
+def plot_lines(env: Environment, metrics_df, line_colors: list, lines=None, legend_loc="lower right"):
     fig, ax = plt.subplots(figsize=(15, 10))    
-    im1 = ax.imshow(env.grid_groups, cm.get_cmap('viridis'))
+    im1 = ax.imshow(env.grid_groups, cm.get_cmap('viridis'), alpha=0.3)
     labels = ['1st quintile', '2nd quintile', '3rd quintile', '4th quintile', '5th quintile']
     values = (np.unique(env.grid_groups[~np.isnan(env.grid_groups)]))
     grid_colors = [ im1.cmap(im1.norm(value)) for value in values]
     patches = [ mpatches.Patch(color=grid_colors[i], label=labels[i] ) for i in range(len(labels)) ]
-    ax.legend(handles=patches, loc="lower right", prop={'size': 14})
+
+    # TODO check how to add a line patch here.
+    patches.append(mpatches.Patch(color=line_colors[0], label=model_types[0]))
+    
+    ax.legend(handles=patches, loc=legend_loc, prop={'size': 14})
     ax.set_title('Generated Lines', fontsize=32)
+    if lines:
+        for i, l in enumerate(lines):
+            # Note here we reverse the dimensions because on scatter plots the horizontal axis is the x axis.
+            l_v = env.vector_to_grid(l).cpu()
+            label = model_types[i]
+            # label = "_no_legend"
+            # if i == 0:
+                # label = "Generated Metro Lines"
 
-    for i, l in enumerate(lines):
-        # Note here we reverse the dimensions because on scatter plots the horizontal axis is the x axis.
-        l_v = env.vector_to_grid(l).cpu()
-        label = "_no_legend"
-        if i == 0:
-            label = "Generated Metro Lines"
+            ax.plot(l_v[1], l_v[0], '-o', color=line_colors[i], label=label, alpha=0.8, markersize=12, linewidth=4)
+    else:
+        # for i, l in enumerate(metrics_df['avg_generated_line']):
+        # BROKEN
+        for i, model in enumerate(metrics_df['model']):
+            with open(Path('result', model, 'tour_idx_multiple.txt')) as f:
+                l = [int(idx) for idx in f.readline().split(',')]
+                l_v = env.vector_to_grid(torch.tensor(l).reshape(-1,1)).cpu()
 
-        ax.plot(l_v[1], l_v[0], '-o', color=line_colors[i], label=label, alpha=1, markersize=12, linewidth=4)
+                label = "_no_legend"
+                if i == 0:
+                    label = "Generated Metro Lines"
+
+            ax.plot(l_v[:, 1], l_v[:, 0], '-o', color=line_colors[i], label=label, alpha=1, markersize=12, linewidth=4)
 
     fig.tight_layout()
     return fig
 
+# Plot Amsterdam Lines
+lines = [torch.tensor([[1097,1050,1051,1004,1005,958,959,912,865,866,819,772,773,726,727,728,681,682,635,636]]),
+    torch.tensor([[436,532,533,580,627,674,675,722,723,724,725,772,773,820,821,868,869,870,871,872]]),
+    torch.tensor([[433,527,528,529,530,577,578,579,580,627,674,675,722,723,724,725,772,773,820,821]]),
+    torch.tensor([[727,678,677,630,629,628,627,580,579,578,577,576,575,574,573,526,525,524,523,476]]),
+    ]
+# colors = ['#71A3F7', '#FE6361', '']
+fig = plot_lines(amsterdam, metrics_ams, ams_colors, lines=lines, legend_loc="lower left")
+fig.show()
 
+fig = plot_lines(amsterdam, metrics_ams, ams_colors, legend_loc="lower left")
+fig.show()
 
+#%% Plot Xian lines
 lines = [torch.tensor([[287,315,314,313,312,311,310,339,338,367,366,395,394,393,392,391,420,419,448,477,476,505,534,563,562,561,590,589,588,587,616,645,644,643,642,671,670,699,728,786,815,814,813,812]]),
     torch.tensor([[812,756,700,644,587,588,559,530,501,502,503,504,505,476,447,418,389,360,361,332,333,334,305,306,277,278,279,250,221,222,223,224,195,196,197,168,169,170,171,172,173,144,115,86,57]])
     ]
 colors = ['#71A3F7', '#FE6361']
-plot_lines(xian, lines, colors)
+fig = plot_lines(xian, metrics_xian, colors, lines=lines)
+fig.show()
 
 
-#%% Plot Amsterdam Lines
 
-lines = [torch.tensor([[1097,1050,1051,1004,1005,958,959,912,865,866,819,772,773,726,727,728,681,682,635,636]]),
-    torch.tensor([[436,532,533,580,627,674,675,722,723,724,725,772,773,820,821,868,869,870,871,872]])
-    ]
-colors = ['#71A3F7', '#FE6361']
-plot_lines(amsterdam, lines, colors)
+# %%
