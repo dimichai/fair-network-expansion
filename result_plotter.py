@@ -11,6 +11,8 @@ from environment import Environment
 import numpy as np
 plt.rcParams.update({'font.size': 18})
 import os
+from matplotlib import cm
+import torch
 
 
 #%%
@@ -96,8 +98,6 @@ ax.set_xlim((0,1))
 
 #%%
 # TODO: transfer this method to the environment class.
-import torch
-from matplotlib import cm
 import numpy as np
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -197,7 +197,12 @@ for i, l in enumerate(lines):
 fig.tight_layout()
 
 # %% PLOT AMSTERDAM RESULTS
-models = ['amsterdam_20220708_11_21_23.191428', 'amsterdam_20220706_14_01_39.431117']
+models = ['amsterdam_20220705_18_25_09.654804', 
+    'amsterdam_20220705_18_17_31.196986', 
+    'amsterdam_20220708_11_21_23.191428',
+    'amsterdam_20220706_11_15_16.765435',
+    'amsterdam_20220807_22_41_55.956804']
+model_types = ['ses_1', 'ses_0', 'ggi_2', 'var_3', 'rawls']
 # amsterdam_20220706_14_01_39.431117  -- Rawls
 # 
 # models = ['amsterdam_20220706_14_01_39.431117']
@@ -210,7 +215,7 @@ amsterdam = Environment(Path(f"./environments/amsterdam/"), groups_file='price_g
     # if 'amsterdam' in p:
         # models.append(p.split('/')[-1])
 
-metrics = prepare_metrics_df(models)
+metrics_ams = prepare_metrics_df(models)
 # metrics = metrics.iloc[0] # TODO delete
 
 #%%
@@ -238,3 +243,52 @@ metrics = prepare_metrics_df(models)
 # fig.tight_layout()
 # # metrics.to_csv('./amsterdam_results.csv', index=False)
 # # %%
+
+#%% Utility vs Equity - Amsterdam Environment - NOT DONE
+def bar_plot(model_names, model_types, model_colors, model_hatches, metrics_df: pd.DataFrame, env: str):
+    # Width of a bar 
+    width = 0.3      
+    ind = np.arange(5)
+    xpos = ind
+    fig, ax = plt.subplots(figsize=(10,7))
+    for i, model in enumerate(model_names):
+        results = metrics_df.loc[metrics_df['model'] == model].iloc[0]['mean_sat_od_by_group_pct']
+        # position of the bar on the x axis
+        # xpos = ind if i == 0 else ind + width
+        ax.bar(xpos, results , width, label=model_types[i], color=model_colors[i], hatch=model_hatches[i])
+        xpos = xpos + width
+
+    plt.xlabel('House Price Quintiles')
+    plt.ylabel('% of total satisfied OD flows')
+    plt.title(f"Utility vs Equity - {env} Environment")
+    plt.xticks(ind + width / 2, ('1st quintile', '2nd', '3rd', '4th', '5th'))
+
+    fig.legend()
+    # return fig
+
+fig = bar_plot(models[:3], model_types[:3], ['#71a3f7', '#ff6361', '#932DFB'], ['', '///', '+'], metrics_ams, 'Amsterdam')
+#%%
+groups_1 = metrics_ams.loc[metrics_ams['model'] == models[0]].iloc[0]['mean_sat_od_by_group_pct']
+groups_2 = metrics_ams.loc[metrics_ams['model'] == models[1]].iloc[0]['mean_sat_od_by_group_pct']
+ind = np.arange(5)
+plt.figure(figsize=(10,7))
+
+# Width of a bar 
+width = 0.3       
+
+# Plotting
+plt.bar(ind, groups_1 , width, label=model_types[0], color="#71a3f7")
+plt.bar(ind + width, groups_2, width, label=model_types[1], color="#ff6361", hatch='///')
+
+plt.xlabel('House Price Quintiles')
+plt.ylabel('% of total satisfied OD flows')
+plt.title("Utility vs Equity - Amsterdam Environment")
+# xticks()
+# First argument - A list of positions at which ticks should be placed
+# Second argument -  A list of labels to place at the given locations
+plt.xticks(ind + width / 2, ('1st quintile', '2nd', '3rd', '4th', '5th'))
+
+# Finding the best position for legends and putting it
+plt.legend(loc='best')
+plt.show()
+# %%
