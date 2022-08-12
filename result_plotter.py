@@ -11,9 +11,11 @@ from environment import Environment
 import numpy as np
 plt.rcParams.update({'font.size': 18})
 import os
+import matplotlib.markers as mmarkers
 from matplotlib import cm
 import torch
 import numpy as np
+import matplotlib.lines as mlines
 import math
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -59,21 +61,11 @@ def prepare_metrics_df(models: List):
     else:
         return df_metrics
 
-#%% PLOT DILEMMA RESULTS
-# Paths of models to evalute
-# environment = Environment(Path(f"./environments/dilemma"), groups_file='./groups.txt')
-# constraints = ForwardConstraints(environment.grid_x_size, environment.grid_y_size, environment.existing_lines_full, environment.grid_to_vector)
-models = ['dilemma_5x5_20220503_13_58_29.563962', 'dilemma_5x5_20220503_17_47_23.454216', 'dilemma_5x5_20220419_13_22_47.509481', 
-            'dilemma_5x5_20220418_17_43_08.080415', 'dilemma_5x5_20220503_15_18_36.055557', 'dilemma_5x5_20220503_16_36_50.970871'
-            , 'dilemma_5x5_20220718_12_03_53.917197']
-metrics = prepare_metrics_df(models)
-
 # To create a scatterplot with different custom markers.
 # From https://github.com/matplotlib/matplotlib/issues/11155
 def mscatter(x,y,ax=None, m=None, **kw):
-    import matplotlib.markers as mmarkers
     if not ax: ax=plt.gca()
-    sc = ax.scatter(x,y,**kw)
+    sc = ax.scatter(x,y, **kw)
     if (m is not None) and (len(m)==len(x)):
         paths = []
         for marker in m:
@@ -85,6 +77,36 @@ def mscatter(x,y,ax=None, m=None, **kw):
                         marker_obj.get_transform())
             paths.append(path)
         sc.set_paths(paths)
+
+
+def bar_plot(model_names, model_types, model_colors, model_hatches, metrics_df: pd.DataFrame, env: str):
+    # Width of a bar 
+    width = 0.3
+    ind = np.arange(5)
+    xpos = ind
+    fig, ax = plt.subplots(figsize=(10,5))
+    for i, model in enumerate(model_names):
+        results = metrics_df.loc[metrics_df['model'] == model].iloc[0]['mean_sat_od_by_group_pct']
+        # position of the bar on the x axis
+        # xpos = ind if i == 0 else ind + width
+        ax.bar(xpos, results , width, label=model_types[i], color=model_colors[i], hatch=model_hatches[i])
+        xpos = xpos + width
+
+    plt.xlabel('House Price Quintiles')
+    plt.ylabel('% of total satisfied OD flows')
+    plt.title(f"Utility vs Equity - {env} Environment")
+    plt.xticks(ind + width * 3 / 2, ('1st quintile', '2nd', '3rd', '4th', '5th'))
+
+    fig.legend()
+
+#%% PLOT DILEMMA RESULTS
+# Paths of models to evalute
+# environment = Environment(Path(f"./environments/dilemma"), groups_file='./groups.txt')
+# constraints = ForwardConstraints(environment.grid_x_size, environment.grid_y_size, environment.existing_lines_full, environment.grid_to_vector)
+models = ['dilemma_5x5_20220503_13_58_29.563962', 'dilemma_5x5_20220503_17_47_23.454216', 'dilemma_5x5_20220419_13_22_47.509481', 
+            'dilemma_5x5_20220418_17_43_08.080415', 'dilemma_5x5_20220503_15_18_36.055557', 'dilemma_5x5_20220503_16_36_50.970871'
+            , 'dilemma_5x5_20220718_12_03_53.917197']
+metrics = prepare_metrics_df(models)
 
 metrics_plot = metrics.drop_duplicates(['mean_sat_group_od_pct', 'group_gini'])
 fig, ax = plt.subplots(figsize=(7, 7))
@@ -218,6 +240,7 @@ for p in paths:
 
 metrics_ams = prepare_metrics_df(models)
 metrics_ams['lowest_quintile_sat_od_pct'] = metrics_ams['mean_sat_od_by_group_pct'].str[0]
+metrics_ams.index = metrics_ams['model']
 
 #%%
 # fig, ax = plt.subplots(figsize=(15, 10))
@@ -245,30 +268,33 @@ metrics_ams['lowest_quintile_sat_od_pct'] = metrics_ams['mean_sat_od_by_group_pc
 # # metrics.to_csv('./amsterdam_results.csv', index=False)
 # # %%
 
-#%% Utility vs Equity - Amsterdam Environment - NOT DONE
-def bar_plot(model_names, model_types, model_colors, model_hatches, metrics_df: pd.DataFrame, env: str):
-    # Width of a bar 
-    width = 0.3      
-    ind = np.arange(5)
-    xpos = ind
-    fig, ax = plt.subplots(figsize=(10,7))
-    for i, model in enumerate(model_names):
-        results = metrics_df.loc[metrics_df['model'] == model].iloc[0]['mean_sat_od_by_group_pct']
-        # position of the bar on the x axis
-        # xpos = ind if i == 0 else ind + width
-        ax.bar(xpos, results , width, label=model_types[i], color=model_colors[i], hatch=model_hatches[i])
-        xpos = xpos + width
+#%% Amsterdam Full environment
+# Palette
+# ["#e60049", "#0bb4ff", "#50e991", "#e6d800", "#9b19f5", "#ffa300", "#dc0ab4", "#b3d4ff", "#00bfa0"]
+# ["#fd7f6f", "#7eb0d5", "#b2e061", "#bd7ebe", "#ffb55a", "#ffee65", "#beb9db", "#fdcce5", "#8bd3c7"]
 
-    plt.xlabel('House Price Quintiles')
-    plt.ylabel('% of total satisfied OD flows')
-    plt.title(f"Utility vs Equity - {env} Environment")
-    plt.xticks(ind + width / 2, ('1st quintile', '2nd', '3rd', '4th', '5th'))
 
-    fig.legend()
-    # return fig
+# Baseline w1=1:   amsterdam_20220810_09_33_35.507895
+# Baseline w2=1:   <>
+# Var.Reg:         amsterdam_20220809_00_40_57.169847
+# Lowest Quintile: amsterdam_20220808_11_53_12.554688
+# GGI              amsterdam_20220810_20_23_40.289417
+plot_models = ['amsterdam_20220810_09_33_35.507895', 'amsterdam_20220809_00_40_57.169847', 'amsterdam_20220808_11_53_12.554688', 'amsterdam_20220810_20_23_40.289417']
+labels = ['Baseline w1=1', 'Var. Reg.', 'Lowest Quintile', 'GGI']
+metrics_plot = metrics_ams.loc[plot_models]
+# model_colors = ["#e60049", "#0bb4ff", "#50e991", "#e6d800"]
+model_colors = ["#fd7f6f", "#7eb0d5", "#b2e061", "#bd7ebe"]
+model_patterns = ['', '+', '/', '-']
 
-ams_colors = ['#71a3f7', '#ff6361', '#932DFB', 'gray', 'black']
-fig = bar_plot(models[:3], model_types[:3], ams_colors, ['', '///', '+'], metrics_ams, 'Amsterdam')
+# Utility vs Equity - We don't want to plot the var.reg model here so we exclude it.
+varreg_idx = labels.index('Var. Reg.')
+
+fig = bar_plot(
+    [m for i, m in enumerate(plot_models) if i != varreg_idx], 
+    [l for i, l in enumerate(labels) if i != varreg_idx], 
+    [c for i, c in enumerate(model_colors) if i != varreg_idx],
+    [p for i, p in enumerate(model_patterns) if i != varreg_idx], 
+    metrics_ams, 'Amsterdam')
 #%%
 groups_1 = metrics_ams.loc[metrics_ams['model'] == models[0]].iloc[0]['mean_sat_od_by_group_pct']
 groups_2 = metrics_ams.loc[metrics_ams['model'] == models[1]].iloc[0]['mean_sat_od_by_group_pct']
@@ -358,7 +384,6 @@ fig.show()
 
 
 # %% Amsterdam averages calculation
-metrics_ams.index = metrics_ams['model']
 
 ams_empty_ses1 = metrics_ams[ ((metrics_ams['existing_lines'] == 0) | np.isnan(metrics_ams['existing_lines']))
                             & (metrics_ams['reward'] == 'weighted') 
@@ -409,28 +434,47 @@ def print_ci(df, col, model: str, z=1.96):
     std = df[col].std()
     se = std/math.sqrt(df.shape[0])
     print(f"[{model} - {col}] - Mean: {m} +- {z * se} SE: {se}, CI:({m - z * se}, {m + z * se}), Sample Size: {df.shape[0]}")
+    return m
 
 def print_stats(df, model:str):
-    print_ci(df, 'mean_sat_group_od_pct', model)
-    print_ci(df, 'group_pct_gini', model)
-    print_ci(df, 'lowest_quintile_sat_od_pct', model)
+    od = print_ci(df, 'mean_sat_group_od_pct', model)
+    gini = print_ci(df, 'group_pct_gini', model)
+    lq = print_ci(df, 'lowest_quintile_sat_od_pct', model)
     print('--------')
 
+    return od, gini, lq
 
-print_stats(ams_full_ses0, 'ams_full_ses_0')
-print_stats(ams_full_var_3, 'ams_full_var_3')
-print_stats(ams_full_rawls, 'ams_full_rawls')
-print_stats(ams_full_ggi_2, 'ams_full_ggi_2')
 
-# print_ci(ams_full_ses1, 'mean_sat_group_od_pct', 'ams_full_ses_1')
+ams_full_ses0_od, ams_full_ses0_gini, ams_full_ses0_lq =  print_stats(ams_full_ses0, 'ams_full_ses_0')
+ams_full_var_3_od, ams_full_var_3_gini, ams_full_var_3_lq = print_stats(ams_full_var_3, 'ams_full_var_3')
+ams_full_rawls_od, ams_full_rawls_gini, ams_full_rawls_lq = print_stats(ams_full_rawls, 'ams_full_rawls')
+ams_full_ggi_2_od, ams_full_ggi_2_gini, ams_full_ggi_2_lq = print_stats(ams_full_ggi_2, 'ams_full_ggi_2')
 
-# print_ci(ams_empty_ses1, 'mean_sat_group_od_pct', 'ams_empty_ses_1')
-# print_ci(ams_empty_ses0, 'mean_sat_group_od_pct', 'ams_empty_ses_0')
-# print_ci(ams_empty_ggi_2, 'mean_sat_group_od_pct', 'ams_empty_ggi_2')
-# print_ci(ams_empty_var_3, 'mean_sat_group_od_pct', 'ams_empty_var_3')
+#%% Amsterdam Scatter plot utility vs equity
+fig, ax = plt.subplots(figsize=(7, 7))
+s = np.repeat(500, 4)
+m = ['o', 's', '^', 'v']
+# c = ['y', '#FF99CC', '#FF0000', 'b']
+c = ['black'] * 4
+labels = ['Baseline w1=1', 'Var. Reg.', 'Lowest Quintile', 'GGI']
 
-# %%
+scatter = mscatter(
+    x=[ams_full_ses0_od, ams_full_var_3_od, ams_full_rawls_od, ams_full_ggi_2_od],
+    y=[ams_full_ses0_gini, ams_full_var_3_gini, ams_full_rawls_gini, ams_full_ggi_2_gini],
+    c=c, s=s, m=m, ax=ax)
 
+ax.set_xlabel('% of total satisfied OD flows', fontsize=18)
+ax.set_ylabel('Gini Index', fontsize=18)
+fig.suptitle('Utility vs Equity - Amsterdam Environment')
+ax.set_ylim((0,0.8))
+
+markers = [mlines.Line2D([], [], color='black', marker=m[i], linestyle='None',
+                          markersize=10, label=labels[i]) for i in range(len(s))]
+
+ax.legend(handles=markers)
+
+# ax.set_xlim((0,1))
 
 
 # ams_empty_ggi_2[['actor_lr', 'critic_lr', 'mean_sat_group_od_pct', 'group_gini', 'budget', 'existing_lines', 'ignore_existing_lines']].sort_values('mean_sat_group_od_pct')
+# %%
