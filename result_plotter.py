@@ -79,25 +79,27 @@ def mscatter(x,y,ax=None, m=None, **kw):
         sc.set_paths(paths)
 
 
-def bar_plot(model_names, model_types, model_colors, model_hatches, metrics_df: pd.DataFrame, env: str):
+def bar_plot(model_names, model_labels, model_colors, model_hatches, metrics_df: pd.DataFrame, env_name: str, figsize=(10, 5), legend_loc='best'):
     # Width of a bar 
     width = 0.3
     ind = np.arange(5)
     xpos = ind
-    fig, ax = plt.subplots(figsize=(10,5))
+    fig, ax = plt.subplots(figsize=figsize)
     for i, model in enumerate(model_names):
         results = metrics_df.loc[metrics_df['model'] == model].iloc[0]['mean_sat_od_by_group_pct']
         # position of the bar on the x axis
         # xpos = ind if i == 0 else ind + width
-        ax.bar(xpos, results , width, label=model_types[i], color=model_colors[i], hatch=model_hatches[i])
+        ax.bar(xpos, results , width, label=model_labels[i], color=model_colors[i], hatch=model_hatches[i])
         xpos = xpos + width
 
     plt.xlabel('House Price Quintiles')
     plt.ylabel('% of total satisfied OD flows')
-    plt.title(f"Utility vs Equity - {env} Environment")
+    plt.title(f"Utility vs Equity - {env_name} Environment")
     plt.xticks(ind + width * 3 / 2, ('1st quintile', '2nd', '3rd', '4th', '5th'))
 
-    fig.legend()
+    ax.legend(loc=legend_loc)
+
+    return fig
 
 #%% PLOT DILEMMA RESULTS
 # Paths of models to evalute
@@ -285,43 +287,46 @@ metrics_plot = metrics_ams.loc[plot_models]
 # model_colors = ["#e60049", "#0bb4ff", "#50e991", "#e6d800"]
 model_colors = ["#fd7f6f", "#7eb0d5", "#b2e061", "#bd7ebe"]
 model_patterns = ['', '+', '/', '-']
+model_markers = ['o', 's', '^', 'v']
 
 # Utility vs Equity - We don't want to plot the var.reg model here so we exclude it.
 varreg_idx = labels.index('Var. Reg.')
 
-fig = bar_plot(
-    [m for i, m in enumerate(plot_models) if i != varreg_idx], 
+bar_fig = bar_plot(
+    [m for i, m in enumerate(plot_models) if i != varreg_idx],
     [l for i, l in enumerate(labels) if i != varreg_idx], 
     [c for i, c in enumerate(model_colors) if i != varreg_idx],
     [p for i, p in enumerate(model_patterns) if i != varreg_idx], 
-    metrics_ams, 'Amsterdam')
+    metrics_plot, 'Amsterdam', figsize=(12, 8))
+
+
 #%%
-groups_1 = metrics_ams.loc[metrics_ams['model'] == models[0]].iloc[0]['mean_sat_od_by_group_pct']
-groups_2 = metrics_ams.loc[metrics_ams['model'] == models[1]].iloc[0]['mean_sat_od_by_group_pct']
-ind = np.arange(5)
-plt.figure(figsize=(10,7))
+# groups_1 = metrics_ams.loc[metrics_ams['model'] == models[0]].iloc[0]['mean_sat_od_by_group_pct']
+# groups_2 = metrics_ams.loc[metrics_ams['model'] == models[1]].iloc[0]['mean_sat_od_by_group_pct']
+# ind = np.arange(5)
+# plt.figure(figsize=(10,7))
 
-# Width of a bar 
-width = 0.3       
+# # Width of a bar 
+# width = 0.3       
 
-# Plotting
-plt.bar(ind, groups_1 , width, label=model_types[0], color="#71a3f7")
-plt.bar(ind + width, groups_2, width, label=model_types[1], color="#ff6361", hatch='///')
+# # Plotting
+# plt.bar(ind, groups_1 , width, label=model_types[0], color="#71a3f7")
+# plt.bar(ind + width, groups_2, width, label=model_types[1], color="#ff6361", hatch='///')
 
-plt.xlabel('House Price Quintiles')
-plt.ylabel('% of total satisfied OD flows')
-plt.title("Utility vs Equity - Amsterdam Environment")
-# xticks()
-# First argument - A list of positions at which ticks should be placed
-# Second argument -  A list of labels to place at the given locations
-plt.xticks(ind + width / 2, ('1st quintile', '2nd', '3rd', '4th', '5th'))
+# plt.xlabel('House Price Quintiles')
+# plt.ylabel('% of total satisfied OD flows')
+# plt.title("Utility vs Equity - Amsterdam Environment")
+# # xticks()
+# # First argument - A list of positions at which ticks should be placed
+# # Second argument -  A list of labels to place at the given locations
+# plt.xticks(ind + width / 2, ('1st quintile', '2nd', '3rd', '4th', '5th'))
 
-# Finding the best position for legends and putting it
-plt.legend(loc='best')
-plt.show()
+# # Finding the best position for legends and putting it
+# plt.legend(loc='best')
+# plt.show()
 # %%
-def plot_lines(env: Environment, metrics_df, line_colors: list, lines=None, legend_loc="lower right"):
-    fig, ax = plt.subplots(figsize=(15, 10))    
+def plot_lines(env: Environment, model_labels: List, model_colors: List, model_markers: List, metrics_df: pd.DataFrame,  lines=None, figsize=(15, 10), legend_loc="lower right"):
+    fig, ax = plt.subplots(figsize=figsize)    
     im1 = ax.imshow(env.grid_groups, cm.get_cmap('viridis'), alpha=0.3)
     labels = ['1st quintile', '2nd quintile', '3rd quintile', '4th quintile', '5th quintile']
     values = (np.unique(env.grid_groups[~np.isnan(env.grid_groups)]))
@@ -329,7 +334,7 @@ def plot_lines(env: Environment, metrics_df, line_colors: list, lines=None, lege
     patches = [ mpatches.Patch(color=grid_colors[i], label=labels[i] ) for i in range(len(labels)) ]
 
     # TODO check how to add a line patch here.
-    patches.append(mpatches.Patch(color=line_colors[0], label=model_types[0]))
+    # patches = patches + [mpatches.Patch(color=model_colors[i], label=model_labels[i]) for i in range(len(model_labels))]
     
     ax.legend(handles=patches, loc=legend_loc, prop={'size': 14})
     ax.set_title('Generated Lines', fontsize=32)
@@ -337,41 +342,41 @@ def plot_lines(env: Environment, metrics_df, line_colors: list, lines=None, lege
         for i, l in enumerate(lines):
             # Note here we reverse the dimensions because on scatter plots the horizontal axis is the x axis.
             l_v = env.vector_to_grid(l).cpu()
-            label = model_types[i]
+            label = model_labels[i]
             # label = "_no_legend"
             # if i == 0:
                 # label = "Generated Metro Lines"
 
-            ax.plot(l_v[1], l_v[0], '-o', color=line_colors[i], label=label, alpha=0.8, markersize=12, linewidth=4)
+            ax.plot(l_v[1], l_v[0], f"-{model_markers[i]}", color=model_colors[i], label=label, alpha=0.8, markersize=12, linewidth=4)
     else:
         # for i, l in enumerate(metrics_df['avg_generated_line']):
-        # BROKEN
         for i, model in enumerate(metrics_df['model']):
             with open(Path('result', model, 'tour_idx_multiple.txt')) as f:
                 l = [int(idx) for idx in f.readline().split(',')]
-                l_v = env.vector_to_grid(torch.tensor(l).reshape(-1,1)).cpu()
+                # l_v = env.vector_to_grid(torch.tensor(l).reshape(-1,1)).cpu()
+                l_v = amsterdam.vector_to_grid(torch.tensor([l])).T.cpu()
 
                 label = "_no_legend"
                 if i == 0:
                     label = "Generated Metro Lines"
 
-            ax.plot(l_v[:, 1], l_v[:, 0], '-o', color=line_colors[i], label=label, alpha=1, markersize=12, linewidth=4)
+            ax.plot(l_v[:, 1], l_v[:, 0], f"-{model_markers[i]}", color=model_colors[i], label=label, alpha=1, markersize=12, linewidth=4)
 
     fig.tight_layout()
     return fig
 
 # Plot Amsterdam Lines
-lines = [torch.tensor([[1097,1050,1051,1004,1005,958,959,912,865,866,819,772,773,726,727,728,681,682,635,636]]),
-    torch.tensor([[436,532,533,580,627,674,675,722,723,724,725,772,773,820,821,868,869,870,871,872]]),
-    torch.tensor([[433,527,528,529,530,577,578,579,580,627,674,675,722,723,724,725,772,773,820,821]]),
-    torch.tensor([[727,678,677,630,629,628,627,580,579,578,577,576,575,574,573,526,525,524,523,476]]),
-    ]
-# colors = ['#71A3F7', '#FE6361', '']
-fig = plot_lines(amsterdam, metrics_ams, ams_colors, lines=lines, legend_loc="lower left")
-fig.show()
+# lines = [torch.tensor([[1097,1050,1051,1004,1005,958,959,912,865,866,819,772,773,726,727,728,681,682,635,636]]),
+#     torch.tensor([[436,532,533,580,627,674,675,722,723,724,725,772,773,820,821,868,869,870,871,872]]),
+#     torch.tensor([[433,527,528,529,530,577,578,579,580,627,674,675,722,723,724,725,772,773,820,821]]),
+#     torch.tensor([[727,678,677,630,629,628,627,580,579,578,577,576,575,574,573,526,525,524,523,476]]),
+#     ]
 
-fig = plot_lines(amsterdam, metrics_ams, ams_colors, legend_loc="lower left")
-fig.show()
+# fig = plot_lines(amsterdam, labels, model_colors, metrics_plot, lines=lines, legend_loc="lower left")
+# fig.show()
+
+line_fig = plot_lines(amsterdam, labels, model_colors, model_markers, metrics_plot, legend_loc="lower left")
+line_fig.show()
 
 #%% Plot Xian lines
 lines = [torch.tensor([[287,315,314,313,312,311,310,339,338,367,366,395,394,393,392,391,420,419,448,477,476,505,534,563,562,561,590,589,588,587,616,645,644,643,642,671,670,699,728,786,815,814,813,812]]),
@@ -453,7 +458,7 @@ ams_full_ggi_2_od, ams_full_ggi_2_gini, ams_full_ggi_2_lq = print_stats(ams_full
 #%% Amsterdam Scatter plot utility vs equity
 fig, ax = plt.subplots(figsize=(7, 7))
 s = np.repeat(500, 4)
-m = ['o', 's', '^', 'v']
+# m = ['o', 's', '^', 'v']
 # c = ['y', '#FF99CC', '#FF0000', 'b']
 c = ['black'] * 4
 labels = ['Baseline w1=1', 'Var. Reg.', 'Lowest Quintile', 'GGI']
@@ -461,7 +466,7 @@ labels = ['Baseline w1=1', 'Var. Reg.', 'Lowest Quintile', 'GGI']
 scatter = mscatter(
     x=[ams_full_ses0_od, ams_full_var_3_od, ams_full_rawls_od, ams_full_ggi_2_od],
     y=[ams_full_ses0_gini, ams_full_var_3_gini, ams_full_rawls_gini, ams_full_ggi_2_gini],
-    c=c, s=s, m=m, ax=ax)
+    c=c, s=s, m=model_markers, ax=ax)
 
 ax.set_xlabel('% of total satisfied OD flows', fontsize=18)
 ax.set_ylabel('Gini Index', fontsize=18)
