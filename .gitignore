@@ -115,3 +115,4 @@ dmypy.json
 .vscode/launch.json
 result/*
 /mlruns/*
+result_ignored/*

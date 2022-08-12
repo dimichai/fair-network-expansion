@@ -13,6 +13,9 @@ plt.rcParams.update({'font.size': 18})
 import os
 from matplotlib import cm
 import torch
+import numpy as np
+import math
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 #%%
@@ -98,8 +101,6 @@ ax.set_xlim((0,1))
 
 #%%
 # TODO: transfer this method to the environment class.
-import numpy as np
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 dilemma = Environment(Path(f"./environments/dilemma_5x5"))
 
@@ -197,26 +198,26 @@ for i, l in enumerate(lines):
 fig.tight_layout()
 
 # %% PLOT AMSTERDAM RESULTS
-models = ['amsterdam_20220705_18_25_09.654804', 
-    'amsterdam_20220705_18_17_31.196986', 
-    'amsterdam_20220708_11_21_23.191428',
-    'amsterdam_20220706_11_15_16.765435',
-    'amsterdam_20220807_22_41_55.956804']
-model_types = ['ses_1', 'ses_0', 'ggi_2', 'var_3', 'rawls']
+# models = ['amsterdam_20220705_18_25_09.654804', 
+#     'amsterdam_20220705_18_17_31.196986', 
+#     'amsterdam_20220708_11_21_23.191428',
+#     'amsterdam_20220706_11_15_16.765435',
+#     'amsterdam_20220807_22_41_55.956804']
+# model_types = ['ses_1', 'ses_0', 'ggi_2', 'var_3', 'rawls']
 # amsterdam_20220706_14_01_39.431117  -- Rawls
 # 
 # models = ['amsterdam_20220706_14_01_39.431117']
 import matplotlib.patches as mpatches
 
 amsterdam = Environment(Path(f"./environments/amsterdam/"), groups_file='price_groups_5.txt')
-# models = []
-# paths  = [ f.path for f in os.scandir('./result') if f.is_dir() ]
-# for p in paths:
-    # if 'amsterdam' in p:
-        # models.append(p.split('/')[-1])
+models = []
+paths  = [ f.path for f in os.scandir('./result') if f.is_dir() ]
+for p in paths:
+    if 'amsterdam' in p:
+        models.append(p.split('/')[-1])
 
 metrics_ams = prepare_metrics_df(models)
-# metrics = metrics.iloc[0] # TODO delete
+metrics_ams['lowest_quintile_sat_od_pct'] = metrics_ams['mean_sat_od_by_group_pct'].str[0]
 
 #%%
 # fig, ax = plt.subplots(figsize=(15, 10))
@@ -356,4 +357,80 @@ fig.show()
 
 
 
+# %% Amsterdam averages calculation
+metrics_ams.index = metrics_ams['model']
+
+ams_empty_ses1 = metrics_ams[ ((metrics_ams['existing_lines'] == 0) | np.isnan(metrics_ams['existing_lines']))
+                            & (metrics_ams['reward'] == 'weighted') 
+                            & (metrics_ams['ses_weight'] == 1)
+                            & (metrics_ams['var_lambda'] == 0)]
+
+ams_empty_ses0 = metrics_ams[((metrics_ams['existing_lines'] == 0) | np.isnan(metrics_ams['existing_lines']))
+                            & (metrics_ams['reward'] == 'weighted') 
+                            & (metrics_ams['ses_weight'] == 0)
+                            & (metrics_ams['var_lambda'] == 0)]
+
+ams_empty_ggi_2 = metrics_ams[((metrics_ams['existing_lines'] == 0) | np.isnan(metrics_ams['existing_lines']))
+                            & (metrics_ams['reward'] == 'ggi') 
+                            & (metrics_ams['ggi_weight'] == 2)]
+
+ams_empty_var_3 = metrics_ams[((metrics_ams['existing_lines'] == 0) | np.isnan(metrics_ams['existing_lines']))
+                            & (metrics_ams['reward'] == 'group') 
+                            & (metrics_ams['var_lambda'] == 3)]
+
+ams_empty_rawls = metrics_ams[((metrics_ams['existing_lines'] == 0) | np.isnan(metrics_ams['existing_lines']))
+                            & (metrics_ams['reward'] == 'rawls')]
+
+
+ams_full_ses1 = metrics_ams[ ((metrics_ams['existing_lines'] != 0) & ~np.isnan(metrics_ams['existing_lines']))
+                            & (metrics_ams['reward'] == 'weighted') 
+                            & (metrics_ams['ses_weight'] == 1)
+                            & (metrics_ams['var_lambda'] == 0)]
+
+ams_full_ses0 = metrics_ams[((metrics_ams['existing_lines'] != 0) & ~np.isnan(metrics_ams['existing_lines']))
+                            & (metrics_ams['reward'] == 'weighted') 
+                            & (metrics_ams['ses_weight'] == 0)
+                            & (metrics_ams['var_lambda'] == 0)]
+
+ams_full_var_3 = metrics_ams[((metrics_ams['existing_lines'] != 0) & ~np.isnan(metrics_ams['existing_lines']))
+                            & (metrics_ams['reward'] == 'group') 
+                            & (metrics_ams['var_lambda'] == 3)]
+
+ams_full_ggi_2 = metrics_ams[((metrics_ams['existing_lines'] != 0) & ~np.isnan(metrics_ams['existing_lines']))
+                            & (metrics_ams['reward'] == 'ggi') 
+                            & (metrics_ams['ggi_weight'] == 2)]
+
+ams_full_rawls = metrics_ams[((metrics_ams['existing_lines'] != 0) & ~np.isnan(metrics_ams['existing_lines']))
+                            & (metrics_ams['reward'] == 'rawls')]
+
+#%%
+def print_ci(df, col, model: str, z=1.96):
+    m = df[col].mean()
+    std = df[col].std()
+    se = std/math.sqrt(df.shape[0])
+    print(f"[{model} - {col}] - Mean: {m} +- {z * se} SE: {se}, CI:({m - z * se}, {m + z * se}), Sample Size: {df.shape[0]}")
+
+def print_stats(df, model:str):
+    print_ci(df, 'mean_sat_group_od_pct', model)
+    print_ci(df, 'group_pct_gini', model)
+    print_ci(df, 'lowest_quintile_sat_od_pct', model)
+    print('--------')
+
+
+print_stats(ams_full_ses0, 'ams_full_ses_0')
+print_stats(ams_full_var_3, 'ams_full_var_3')
+print_stats(ams_full_rawls, 'ams_full_rawls')
+print_stats(ams_full_ggi_2, 'ams_full_ggi_2')
+
+# print_ci(ams_full_ses1, 'mean_sat_group_od_pct', 'ams_full_ses_1')
+
+# print_ci(ams_empty_ses1, 'mean_sat_group_od_pct', 'ams_empty_ses_1')
+# print_ci(ams_empty_ses0, 'mean_sat_group_od_pct', 'ams_empty_ses_0')
+# print_ci(ams_empty_ggi_2, 'mean_sat_group_od_pct', 'ams_empty_ggi_2')
+# print_ci(ams_empty_var_3, 'mean_sat_group_od_pct', 'ams_empty_var_3')
+
 # %%
+
+
+
+# ams_empty_ggi_2[['actor_lr', 'critic_lr', 'mean_sat_group_od_pct', 'group_gini', 'budget', 'existing_lines', 'ignore_existing_lines']].sort_values('mean_sat_group_od_pct')
