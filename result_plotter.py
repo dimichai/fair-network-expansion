@@ -301,8 +301,8 @@ def create_all_plots(env: Environment, metrics_df: pd.DataFrame, metadata: List,
 
     scatter_models = metadata.loc[scatter_plot_models]
     scatter_fig = plot_scatter(
-        x=[scatter_x],
-        y=[scatter_y],
+        x=scatter_x,
+        y=scatter_y,
         markers=scatter_models['marker'].tolist(),
         labels=scatter_models['label'].tolist(),
         colors=scatter_models['color'].tolist(),
@@ -326,6 +326,24 @@ create_all_plots(amsterdam, metrics_ams, ams_full_plot,
     scatter_y=[ams_full_ses0_gini, ams_full_var_3_gini, ams_full_rawls_gini, ams_full_ggi_2_gini],
     plot_name_prefix='ams_full')
 
+
+ams_empty_plot = [
+    ['Baseline w1=1',   'amsterdam_20220705_18_17_31.196986', '#fd7f6f', '', 'o'],
+    ['Baseline w2=1',   'amsterdam_20220705_18_25_09.654804',                                   '#bd7ebe', '-', 's'],
+    ['Var.Reg',         'amsterdam_20220706_11_15_16.765435', '#ffb55a', '+', '^'],
+    # ['Lowest Quintile', 'amsterdam_20220807_22_41_55.956804', '#7eb0d5', 'o', 'v'],
+    ['Lowest Quintile', 'amsterdam_20220810_09_26_45.963603', '#7eb0d5', 'o', 'v'],
+    ['GGI',             'amsterdam_20220708_11_21_23.191428', '#b2e061', '/', 'D'],
+]
+
+create_all_plots(amsterdam, metrics_ams, ams_empty_plot, 
+    bar_plot_models=['Baseline w1=1', 'Lowest Quintile', 'GGI'],
+    line_plot_models=['Baseline w1=1', 'Lowest Quintile', 'GGI', 'Var.Reg'],
+    scatter_plot_models=['Baseline w1=1', 'Var.Reg', 'Lowest Quintile', 'GGI'],
+    scatter_x=[ams_empty_ses0_od, ams_empty_var_3_od, ams_empty_rawls_od, ams_empty_ggi_2_od],
+    scatter_y=[ams_empty_ses0_gini, ams_empty_var_3_gini, ams_empty_rawls_gini, ams_empty_ggi_2_gini],
+    plot_name_prefix='ams_empty')
+
 #%%
 # x=[ams_full_ses0_od, ams_full_var_3_od, ams_full_rawls_od, ams_full_ggi_2_od],
 # y=[ams_full_ses0_gini, ams_full_var_3_gini, ams_full_rawls_gini, ams_full_ggi_2_gini],
@@ -333,20 +351,8 @@ create_all_plots(amsterdam, metrics_ams, ams_full_plot,
 # scatter models: ['Baseline w1=1', 'Var.Reg', 'Lowest Quintile', 'GGI']
 # line_models : 
 #%%
-## Empty Environment
-# Baseline w1=1:   amsterdam_20220705_18_17_31.196986
-# Baseline w2=1:   amsterdam_20220705_18_25_09.654804
-# Var.Reg:         amsterdam_20220706_11_15_16.765435
-# Lowest Quintile: amsterdam_20220807_22_41_55.956804
-# GGI              amsterdam_20220708_11_21_23.191428
 
-# ams_empty_plot = [
-#     ['Baseline w1=1',   'amsterdam_20220705_18_17_31.196986', '#fd7f6f', '', 'o'],
-#     ['Baseline w2=1',   'amsterdam_20220705_18_25_09.654804',                                   '#bd7ebe', '-', 's'],
-#     ['Var.Reg',         'amsterdam_20220706_11_15_16.765435', '#ffb55a', '+', '^'],
-#     ['Lowest Quintile', 'amsterdam_20220807_22_41_55.956804', '#7eb0d5', 'o', 'v'],
-#     ['GGI',             'amsterdam_20220708_11_21_23.191428', '#b2e061', '/', 'D'],
-# ]
+
 #%%
 # ams_empty_ggi_2[['actor_lr', 'critic_lr', 'mean_sat_group_od_pct', 'group_gini', 'budget', 'existing_lines', 'ignore_existing_lines']].sort_values('mean_sat_group_od_pct')
 
