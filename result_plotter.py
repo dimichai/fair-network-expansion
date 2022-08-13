@@ -12,6 +12,7 @@ import numpy as np
 plt.rcParams.update({'font.size': 18})
 import os
 import matplotlib.markers as mmarkers
+import matplotlib.patches as mpatches
 from matplotlib import cm
 import torch
 import numpy as np
@@ -77,7 +78,6 @@ def print_stats(df, model:str):
 
     return od, gini, lq
 
-
 def plot_bar(model_names, model_labels, model_colors, model_hatches, metrics_df: pd.DataFrame, env_name: str, figsize=(10, 5), legend_loc='best'):
     # https://stackoverflow.com/questions/10369681/how-to-plot-bar-graphs-with-same-x-coordinates-side-by-side-dodged
     # Width of a bar 
@@ -129,7 +129,7 @@ def plot_lines(env: Environment, model_labels: List, model_colors: List, model_m
             with open(Path('result', model, 'tour_idx_multiple.txt')) as f:
                 l = [int(idx) for idx in f.readline().split(',')]
                 # l_v = env.vector_to_grid(torch.tensor(l).reshape(-1,1)).cpu()
-                l_v = amsterdam.vector_to_grid(torch.tensor([l])).T.cpu()
+                l_v = env.vector_to_grid(torch.tensor([l])).T.cpu()
 
                 label = "_no_legend"
                 if i == 0:
@@ -139,11 +139,10 @@ def plot_lines(env: Environment, model_labels: List, model_colors: List, model_m
 
     fig.tight_layout()
     return fig
-
 # To create a scatterplot with different custom markers.
 # From https://github.com/matplotlib/matplotlib/issues/11155
-def plot_scatter(x,y,ax=None, markers=None, labels=None, colors=None, figsize=(12, 8)):
-    s = np.repeat(800, 4)
+def plot_scatter(x,y,ax=None, markers=None, labels=None, colors=None, env_name=None, figsize=(12, 8)):
+    s = np.repeat(800, len(x))
     fig, ax = plt.subplots(figsize=figsize)
     # if not ax: ax = plt.gca()
     sc = ax.scatter(x,y, s=s, c=colors)
@@ -161,7 +160,7 @@ def plot_scatter(x,y,ax=None, markers=None, labels=None, colors=None, figsize=(1
 
     ax.set_xlabel('% of total satisfied flows', fontsize=32)
     ax.set_ylabel('Gini Index', fontsize=32)
-    fig.suptitle('Equity vs Utility - Amsterdam', fontsize=32)
+    fig.suptitle(f'Equity vs Utility - {env_name}', fontsize=32)
     ax.set_ylim((0,0.8))
 
 
@@ -170,18 +169,48 @@ def plot_scatter(x,y,ax=None, markers=None, labels=None, colors=None, figsize=(1
     ax.legend(handles=markers, prop={'size': 24})
     fig.tight_layout()
     return fig
-# %% PLOT AMSTERDAM RESULTS
-# models = ['amsterdam_20220705_18_25_09.654804', 
-#     'amsterdam_20220705_18_17_31.196986', 
-#     'amsterdam_20220708_11_21_23.191428',
-#     'amsterdam_20220706_11_15_16.765435',
-#     'amsterdam_20220807_22_41_55.956804']
-# model_types = ['ses_1', 'ses_0', 'ggi_2', 'var_3', 'rawls']
-# amsterdam_20220706_14_01_39.431117  -- Rawls
-# 
-# models = ['amsterdam_20220706_14_01_39.431117']
-import matplotlib.patches as mpatches
 
+def create_all_plots(env: Environment, metrics_df: pd.DataFrame, metadata: List, bar_plot_models: List, line_plot_models: List, scatter_plot_models: List, scatter_x: List, scatter_y: List, plot_name_prefix: None, env_name=None, figsize=(12,8)):
+    metadata = pd.DataFrame(metadata, columns=['label', 'model', 'color', 'pattern', 'marker'])
+    metadata.index = metadata['label']
+
+    bar_models = metadata.loc[bar_plot_models]
+    bar_fig = plot_bar(
+        bar_models['model'].tolist(),
+        bar_models['label'].tolist(), 
+        bar_models['color'].tolist(),
+        bar_models['pattern'].tolist(), 
+        metrics_df[metrics_df.index.isin(bar_models['model'].tolist())], 
+        env_name=env_name, 
+        figsize=figsize)
+
+    bar_fig.savefig(f'./{plot_name_prefix}_bar.png')
+
+    line_models = metadata.loc[line_plot_models]
+    line_fig = plot_lines(
+        env, 
+        line_models['label'].tolist(), 
+        line_models['color'].tolist(), 
+        line_models['marker'].tolist(),
+        metrics_df[metrics_df.index.isin(line_models['model'].tolist())], 
+        env_name=env_name, 
+        legend_loc="lower left", 
+        figsize=figsize)
+    line_fig.savefig(f'./{plot_name_prefix}_lines.png')
+
+    scatter_models = metadata.loc[scatter_plot_models]
+    scatter_fig = plot_scatter(
+        x=scatter_x,
+        y=scatter_y,
+        markers=scatter_models['marker'].tolist(),
+        labels=scatter_models['label'].tolist(),
+        colors=scatter_models['color'].tolist(),
+        env_name=env_name,
+        figsize=figsize) 
+
+    scatter_fig.savefig(f'./{plot_name_prefix}_scatter.png')
+
+# %% AMSTERDAM
 amsterdam = Environment(Path(f"./environments/amsterdam/"), groups_file='price_groups_5.txt')
 models = []
 paths  = [ f.path for f in os.scandir('./result') if f.is_dir() ]
@@ -244,7 +273,6 @@ ams_full_var_3_od, ams_full_var_3_gini, ams_full_var_3_lq = print_stats(ams_full
 ams_full_rawls_od, ams_full_rawls_gini, ams_full_rawls_lq = print_stats(ams_full_rawls, 'ams_full_rawls')
 ams_full_ggi_2_od, ams_full_ggi_2_gini, ams_full_ggi_2_lq = print_stats(ams_full_ggi_2, 'ams_full_ggi_2')
 
-#%%
 ams_empty_ses0_od, ams_empty_ses0_gini, ams_empty_ses0_lq =  print_stats(ams_empty_ses0, 'ams_empty_ses_0')
 ams_empty_ses1_od, ams_empty_ses1_gini, ams_empty_ses1_lq =  print_stats(ams_empty_ses1, 'ams_empty_ses_1')
 ams_empty_var_3_od, ams_empty_var_3_gini, ams_empty_var_3_lq = print_stats(ams_empty_var_3, 'ams_empty_var_3')
@@ -270,49 +298,10 @@ ams_empty_ggi_2_od, ams_empty_ggi_2_gini, ams_empty_ggi_2_lq = print_stats(ams_e
 # model_patterns = ['', '/', '+', 'o', '-']
 # model_markers = ['o', 's', '^', 'v']
 
-
-def create_all_plots(env: Environment, metrics_df: pd.DataFrame, metadata: List, bar_plot_models: List, line_plot_models: List, scatter_plot_models: List, scatter_x: List, scatter_y: List, plot_name_prefix: None, figsize=(12,8)):
-    metadata = pd.DataFrame(metadata, columns=['label', 'model', 'color', 'pattern', 'marker'])
-    metadata.index = metadata['label']
-
-    bar_models = metadata.loc[bar_plot_models]
-    bar_fig = plot_bar(
-        bar_models['model'].tolist(),
-        bar_models['label'].tolist(), 
-        bar_models['color'].tolist(),
-        bar_models['pattern'].tolist(), 
-        metrics_df[metrics_df.index.isin(bar_models['model'].tolist())], 
-        'Amsterdam', 
-        figsize=figsize)
-
-    bar_fig.savefig(f'./{plot_name_prefix}_bar.png')
-
-    line_models = metadata.loc[line_plot_models]
-    line_fig = plot_lines(
-        env, 
-        line_models['label'].tolist(), 
-        line_models['color'].tolist(), 
-        line_models['marker'].tolist(),
-        metrics_df[metrics_df.index.isin(line_models['model'].tolist())], 
-        env_name='Amsterdam', 
-        legend_loc="lower left", 
-        figsize=figsize)
-    line_fig.savefig(f'./{plot_name_prefix}_lines.png')
-
-    scatter_models = metadata.loc[scatter_plot_models]
-    scatter_fig = plot_scatter(
-        x=scatter_x,
-        y=scatter_y,
-        markers=scatter_models['marker'].tolist(),
-        labels=scatter_models['label'].tolist(),
-        colors=scatter_models['color'].tolist(),
-        figsize=figsize) 
-
-    scatter_fig.savefig(f'./{plot_name_prefix}_scatter.png')
-
+#%%
 ams_full_plot = [
     ['Baseline w1=1',   'amsterdam_20220810_09_33_35.507895', '#fd7f6f', '', 'o'],
-    ['Baseline w2=1',   '',                                   '#bd7ebe', '-', 's'],
+    # ['Baseline w2=1',   '',                                   '#bd7ebe', '-', 's'],
     ['Var.Reg',         'amsterdam_20220809_00_40_57.169847', '#ffb55a', '+', '^'],
     ['Lowest Quintile', 'amsterdam_20220808_11_53_12.554688', '#7eb0d5', 'o', 'v'],
     ['GGI',             'amsterdam_20220810_20_23_40.289417', '#b2e061', '/', 'D'],
@@ -324,12 +313,13 @@ create_all_plots(amsterdam, metrics_ams, ams_full_plot,
     scatter_plot_models=['Baseline w1=1', 'Var.Reg', 'Lowest Quintile', 'GGI'],
     scatter_x=[ams_full_ses0_od, ams_full_var_3_od, ams_full_rawls_od, ams_full_ggi_2_od],
     scatter_y=[ams_full_ses0_gini, ams_full_var_3_gini, ams_full_rawls_gini, ams_full_ggi_2_gini],
-    plot_name_prefix='ams_full')
+    plot_name_prefix='ams_full',
+    env_name='Amsterdam')
 
 
 ams_empty_plot = [
     ['Baseline w1=1',   'amsterdam_20220705_18_17_31.196986', '#fd7f6f', '', 'o'],
-    ['Baseline w2=1',   'amsterdam_20220705_18_25_09.654804',                                   '#bd7ebe', '-', 's'],
+    ['Baseline w2=1',   'amsterdam_20220705_18_25_09.654804', '#bd7ebe', '-', 's'],
     ['Var.Reg',         'amsterdam_20220706_11_15_16.765435', '#ffb55a', '+', '^'],
     # ['Lowest Quintile', 'amsterdam_20220807_22_41_55.956804', '#7eb0d5', 'o', 'v'],
     ['Lowest Quintile', 'amsterdam_20220810_09_26_45.963603', '#7eb0d5', 'o', 'v'],
@@ -342,17 +332,69 @@ create_all_plots(amsterdam, metrics_ams, ams_empty_plot,
     scatter_plot_models=['Baseline w1=1', 'Var.Reg', 'Lowest Quintile', 'GGI'],
     scatter_x=[ams_empty_ses0_od, ams_empty_var_3_od, ams_empty_rawls_od, ams_empty_ggi_2_od],
     scatter_y=[ams_empty_ses0_gini, ams_empty_var_3_gini, ams_empty_rawls_gini, ams_empty_ggi_2_gini],
-    plot_name_prefix='ams_empty')
-
-#%%
-# x=[ams_full_ses0_od, ams_full_var_3_od, ams_full_rawls_od, ams_full_ggi_2_od],
-# y=[ams_full_ses0_gini, ams_full_var_3_gini, ams_full_rawls_gini, ams_full_ggi_2_gini],
-
-# scatter models: ['Baseline w1=1', 'Var.Reg', 'Lowest Quintile', 'GGI']
-# line_models : 
-#%%
+    plot_name_prefix='ams_empty',
+    env_name='Amsterdam')
 
 
+#%% XIAN
+
+xian = Environment(Path(f"./environments/xian/"), groups_file='price_groups_5.txt')
+models = []
+paths  = [ f.path for f in os.scandir('./result') if f.is_dir() ]
+for p in paths:
+    if 'xian' in p:
+        models.append(p.split('/')[-1])
+
+metrics_xian = prepare_metrics_df(models)
+metrics_xian['lowest_quintile_sat_od_pct'] = metrics_xian['mean_sat_od_by_group_pct'].str[0]
+metrics_xian.index = metrics_xian['model']
+
+xian_full_ses0 = metrics_xian[((metrics_xian['existing_lines'] != 0) & ~np.isnan(metrics_xian['existing_lines']))
+                            & (metrics_xian['reward'] == 'weighted') 
+                            & (metrics_xian['ses_weight'] == 0)
+                            & (metrics_xian['var_lambda'] == 0)]
+
+xian_full_ses1 = metrics_xian[((metrics_xian['existing_lines'] != 0) & ~np.isnan(metrics_xian['existing_lines']))
+                            & (metrics_xian['reward'] == 'weighted') 
+                            & (metrics_xian['ses_weight'] == 1)
+                            & (metrics_xian['var_lambda'] == 0)]
+
+xian_full_var_5 = metrics_xian[((metrics_xian['existing_lines'] != 0) & ~np.isnan(metrics_xian['existing_lines']))
+                            & (metrics_xian['reward'] == 'group') 
+                            & (metrics_xian['var_lambda'] == 5)]
+
+xian_full_ggi_2 = metrics_xian[((metrics_xian['existing_lines'] != 0) & ~np.isnan(metrics_xian['existing_lines']))
+                            & (metrics_xian['reward'] == 'ggi') 
+                            & (metrics_xian['ggi_weight'] == 2)]
+
+xian_full_rawls = metrics_xian[((metrics_xian['existing_lines'] != 0) & ~np.isnan(metrics_xian['existing_lines']))
+                            & (metrics_xian['reward'] == 'rawls')]
+
+xian_full_ses0_od, xian_full_ses0_gini, xian_full_ses0_lq =  print_stats(xian_full_ses0, 'xian_full_ses_0')
+xian_full_ses1_od, xian_full_ses1_gini, xian_full_ses1_lq =  print_stats(xian_full_ses1, 'xian_full_ses_1')
+xian_full_var_5_od, xian_full_var_5_gini, xian_full_var_5_lq = print_stats(xian_full_var_5, 'xian_full_var_5')
+xian_full_rawls_od, xian_full_rawls_gini, xian_full_rawls_lq = print_stats(xian_full_rawls, 'xian_full_rawls')
+xian_full_ggi_2_od, xian_full_ggi_2_gini, xian_full_ggi_2_lq = print_stats(xian_full_ggi_2, 'xian_full_ggi_2')
+
+
+
+xian_full_plot = [
+    ['Baseline w1=1',   'xian_20220812_09_42_57.652815', '#fd7f6f', '', 'o'],
+    ['Baseline w2=1',   'xian_20220812_14_44_22.783845',                                   '#bd7ebe', '-', 's'],
+    # ['Var.Reg',         '', '#ffb55a', '+', '^'],
+    # ['Lowest Quintile', '', '#7eb0d5', 'o', 'v'],
+    # ['Lowest Quintile', '', '#7eb0d5', 'o', 'v'],
+    # ['GGI',             '', '#b2e061', '/', 'D'],
+]
+
+create_all_plots(xian, metrics_xian, xian_full_plot, 
+    bar_plot_models=['Baseline w1=1', 'Baseline w2=1'],
+    line_plot_models=['Baseline w1=1', 'Baseline w2=1'],
+    scatter_plot_models=['Baseline w1=1', 'Baseline w2=1'],
+    scatter_x=[xian_full_ses0_od, xian_full_ses1_od],
+    scatter_y=[xian_full_ses0_gini, xian_full_ses1_gini],
+    plot_name_prefix='xian_full', 
+    env_name="Xi'an")
 #%%
 # ams_empty_ggi_2[['actor_lr', 'critic_lr', 'mean_sat_group_od_pct', 'group_gini', 'budget', 'existing_lines', 'ignore_existing_lines']].sort_values('mean_sat_group_od_pct')
 
