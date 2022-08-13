@@ -87,6 +87,8 @@ def plot_bar(model_names, model_labels, model_colors, model_hatches, metrics_df:
     fig, ax = plt.subplots(figsize=figsize)
     for i, model in enumerate(model_names):
         results = metrics_df.loc[metrics_df['model'] == model].iloc[0]['mean_sat_od_by_group_pct']
+        # TODO change that
+        results = [r * 100 for r in  results]
         # position of the bar on the x axis
         # xpos = ind if i == 0 else ind + width
         ax.bar(xpos, results , width, label=model_labels[i], color=model_colors[i], hatch=model_hatches[i])
@@ -219,7 +221,9 @@ for p in paths:
         models.append(p.split('/')[-1])
 
 metrics_ams = prepare_metrics_df(models)
+metrics_ams['mean_sat_group_od_pct'] = metrics_ams['mean_sat_group_od_pct'] * 100
 metrics_ams['lowest_quintile_sat_od_pct'] = metrics_ams['mean_sat_od_by_group_pct'].str[0]
+metrics_ams['lowest_quintile_sat_od_pct'] = metrics_ams['lowest_quintile_sat_od_pct'] * 100
 metrics_ams.index = metrics_ams['model']
 
 # %% Amsterdam averages calculation
@@ -346,7 +350,9 @@ for p in paths:
         models.append(p.split('/')[-1])
 
 metrics_xian = prepare_metrics_df(models)
+metrics_xian['mean_sat_group_od_pct'] = metrics_xian['mean_sat_group_od_pct'] * 100
 metrics_xian['lowest_quintile_sat_od_pct'] = metrics_xian['mean_sat_od_by_group_pct'].str[0]
+metrics_ams['lowest_quintile_sat_od_pct'] = metrics_ams['lowest_quintile_sat_od_pct'] * 100
 metrics_xian.index = metrics_xian['model']
 
 xian_full_ses0 = metrics_xian[((metrics_xian['existing_lines'] != 0) & ~np.isnan(metrics_xian['existing_lines']))
