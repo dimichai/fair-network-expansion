@@ -270,6 +270,46 @@ ams_empty_ggi_2_od, ams_empty_ggi_2_gini, ams_empty_ggi_2_lq = print_stats(ams_e
 # model_patterns = ['', '/', '+', 'o', '-']
 # model_markers = ['o', 's', '^', 'v']
 
+
+def create_all_plots(env: Environment, metrics_df: pd.DataFrame, metadata: List, bar_plot_models: List, line_plot_models: List, scatter_plot_models: List, scatter_x: List, scatter_y: List, plot_name_prefix: None, figsize=(12,8)):
+    metadata = pd.DataFrame(metadata, columns=['label', 'model', 'color', 'pattern', 'marker'])
+    metadata.index = metadata['label']
+
+    bar_models = metadata.loc[bar_plot_models]
+    bar_fig = plot_bar(
+        bar_models['model'].tolist(),
+        bar_models['label'].tolist(), 
+        bar_models['color'].tolist(),
+        bar_models['pattern'].tolist(), 
+        metrics_df[metrics_df.index.isin(bar_models['model'].tolist())], 
+        'Amsterdam', 
+        figsize=figsize)
+
+    bar_fig.savefig(f'./{plot_name_prefix}_bar.png')
+
+    line_models = metadata.loc[line_plot_models]
+    line_fig = plot_lines(
+        env, 
+        line_models['label'].tolist(), 
+        line_models['color'].tolist(), 
+        line_models['marker'].tolist(),
+        metrics_df[metrics_df.index.isin(line_models['model'].tolist())], 
+        env_name='Amsterdam', 
+        legend_loc="lower left", 
+        figsize=figsize)
+    line_fig.savefig(f'./{plot_name_prefix}_lines.png')
+
+    scatter_models = metadata.loc[scatter_plot_models]
+    scatter_fig = plot_scatter(
+        x=[scatter_x],
+        y=[scatter_y],
+        markers=scatter_models['marker'].tolist(),
+        labels=scatter_models['label'].tolist(),
+        colors=scatter_models['color'].tolist(),
+        figsize=figsize) 
+
+    scatter_fig.savefig(f'./{plot_name_prefix}_scatter.png')
+
 ams_full_plot = [
     ['Baseline w1=1',   'amsterdam_20220810_09_33_35.507895', '#fd7f6f', '', 'o'],
     ['Baseline w2=1',   '',                                   '#bd7ebe', '-', 's'],
@@ -278,47 +318,21 @@ ams_full_plot = [
     ['GGI',             'amsterdam_20220810_20_23_40.289417', '#b2e061', '/', 'D'],
 ]
 
-ams_full_plot = pd.DataFrame(ams_full_plot, columns=['label', 'model', 'color', 'pattern', 'marker'])
-ams_full_plot.index = ams_full_plot['label']
+create_all_plots(amsterdam, metrics_ams, ams_full_plot, 
+    bar_plot_models=['Baseline w1=1', 'Lowest Quintile', 'GGI'],
+    line_plot_models=['Baseline w1=1', 'Lowest Quintile', 'GGI', 'Var.Reg'],
+    scatter_plot_models=['Baseline w1=1', 'Var.Reg', 'Lowest Quintile', 'GGI'],
+    scatter_x=[ams_full_ses0_od, ams_full_var_3_od, ams_full_rawls_od, ams_full_ggi_2_od],
+    scatter_y=[ams_full_ses0_gini, ams_full_var_3_gini, ams_full_rawls_gini, ams_full_ggi_2_gini],
+    plot_name_prefix='ams_full')
 
-bar_models = ams_full_plot.loc[['Baseline w1=1', 'Lowest Quintile', 'GGI']]
-bar_fig = plot_bar(
-    bar_models['model'].tolist(),
-    bar_models['label'].tolist(), 
-    bar_models['color'].tolist(),
-    bar_models['pattern'].tolist(), 
-    metrics_ams[metrics_ams.index.isin(bar_models['model'].tolist())], 
-    'Amsterdam', 
-    figsize=(12, 8))
+#%%
+# x=[ams_full_ses0_od, ams_full_var_3_od, ams_full_rawls_od, ams_full_ggi_2_od],
+# y=[ams_full_ses0_gini, ams_full_var_3_gini, ams_full_rawls_gini, ams_full_ggi_2_gini],
 
-bar_fig.savefig('./ams_full_bar.png')
-
-line_models = ams_full_plot.loc[['Baseline w1=1', 'Lowest Quintile', 'GGI', 'Var.Reg']]
-line_fig = plot_lines(
-    amsterdam, 
-    line_models['label'].tolist(), 
-    line_models['color'].tolist(), 
-    line_models['marker'].tolist(),
-    metrics_ams[metrics_ams.index.isin(line_models['model'].tolist())], 
-    env_name='Amsterdam', 
-    legend_loc="lower left", 
-    figsize=(12, 8))
-line_fig.savefig('./ams_full_lines.png')
-
-
-scatter_fig = plot_scatter(
-    x=[ams_full_ses0_od, ams_full_var_3_od, ams_full_rawls_od, ams_full_ggi_2_od],
-    y=[ams_full_ses0_gini, ams_full_var_3_gini, ams_full_rawls_gini, ams_full_ggi_2_gini],
-    markers=ams_full_plot.loc[['Baseline w1=1', 'Var.Reg', 'Lowest Quintile', 'GGI']]['marker'].tolist(),
-    labels=ams_full_plot.loc[['Baseline w1=1', 'Var.Reg', 'Lowest Quintile', 'GGI']]['label'].tolist(),
-    colors=ams_full_plot.loc[['Baseline w1=1', 'Var.Reg', 'Lowest Quintile', 'GGI']]['color'].tolist(),
-    figsize=(12,8)) 
-
-
-scatter_fig.savefig('./ams_full_scatter.png')
-
-
-
+# scatter models: ['Baseline w1=1', 'Var.Reg', 'Lowest Quintile', 'GGI']
+# line_models : 
+#%%
 ## Empty Environment
 # Baseline w1=1:   amsterdam_20220705_18_17_31.196986
 # Baseline w2=1:   amsterdam_20220705_18_25_09.654804
@@ -326,17 +340,15 @@ scatter_fig.savefig('./ams_full_scatter.png')
 # Lowest Quintile: amsterdam_20220807_22_41_55.956804
 # GGI              amsterdam_20220708_11_21_23.191428
 
-ams_empty_plot = [
-    ['Baseline w1=1',   'amsterdam_20220705_18_17_31.196986', '#fd7f6f', '', 'o'],
-    ['Baseline w2=1',   'amsterdam_20220705_18_25_09.654804',                                   '#bd7ebe', '-', 's'],
-    ['Var.Reg',         'amsterdam_20220706_11_15_16.765435', '#ffb55a', '+', '^'],
-    ['Lowest Quintile', 'amsterdam_20220807_22_41_55.956804', '#7eb0d5', 'o', 'v'],
-    ['GGI',             'amsterdam_20220708_11_21_23.191428', '#b2e061', '/', 'D'],
-]
-
+# ams_empty_plot = [
+#     ['Baseline w1=1',   'amsterdam_20220705_18_17_31.196986', '#fd7f6f', '', 'o'],
+#     ['Baseline w2=1',   'amsterdam_20220705_18_25_09.654804',                                   '#bd7ebe', '-', 's'],
+#     ['Var.Reg',         'amsterdam_20220706_11_15_16.765435', '#ffb55a', '+', '^'],
+#     ['Lowest Quintile', 'amsterdam_20220807_22_41_55.956804', '#7eb0d5', 'o', 'v'],
+#     ['GGI',             'amsterdam_20220708_11_21_23.191428', '#b2e061', '/', 'D'],
+# ]
 #%%
 # ams_empty_ggi_2[['actor_lr', 'critic_lr', 'mean_sat_group_od_pct', 'group_gini', 'budget', 'existing_lines', 'ignore_existing_lines']].sort_values('mean_sat_group_od_pct')
-# %%
 
 
 #%% PLOT DILEMMA RESULTS
