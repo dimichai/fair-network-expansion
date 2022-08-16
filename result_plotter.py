@@ -111,7 +111,7 @@ def plot_bar(model_names, model_labels, model_colors, model_hatches, metrics_df:
     fig.tight_layout()
     return fig
 
-def plot_lines(env: Environment, model_labels: List, model_colors: List, model_markers: List, metrics_df: pd.DataFrame, env_name, lines=None, figsize=(15, 10), legend_loc="lower right"):
+def plot_lines(env: Environment, model_names, model_labels: List, model_colors: List, model_markers: List, metrics_df: pd.DataFrame, env_name, lines=None, figsize=(15, 10), legend_loc="lower right"):
     fig, ax = plt.subplots(figsize=figsize)    
     im1 = ax.imshow(env.grid_groups, cm.get_cmap('viridis'), alpha=0.3)
     labels = ['1st quintile', '2nd quintile', '3rd quintile', '4th quintile', '5th quintile']
@@ -133,7 +133,8 @@ def plot_lines(env: Environment, model_labels: List, model_colors: List, model_m
             ax.plot(l_v[1], l_v[0], f"-{model_markers[i]}", color=model_colors[i], label=label, alpha=0.8, markersize=12, linewidth=4)
     else:
         # for i, l in enumerate(metrics_df['avg_generated_line']):
-        for i, model in enumerate(metrics_df['model']):
+        for i, model in enumerate(model_names):
+        # for i, model in enumerate(metrics_df['model']):
             with open(Path('result', model, 'tour_idx_multiple.txt')) as f:
                 l = [int(idx) for idx in f.readline().split(',')]
                 # l_v = env.vector_to_grid(torch.tensor(l).reshape(-1,1)).cpu()
@@ -185,9 +186,9 @@ def create_all_plots(env: Environment, metrics_df: pd.DataFrame, metadata: List,
     bar_models = metadata.loc[bar_plot_models]
     bar_fig = plot_bar(
         bar_models['model'].tolist(),
-        bar_models['label'].tolist(), 
+        bar_models['label'].tolist(),
         bar_models['color'].tolist(),
-        bar_models['pattern'].tolist(), 
+        bar_models['pattern'].tolist(),
         metrics_df[metrics_df.index.isin(bar_models['model'].tolist())], 
         env_name=env_name, 
         figsize=figsize)
@@ -197,6 +198,7 @@ def create_all_plots(env: Environment, metrics_df: pd.DataFrame, metadata: List,
     line_models = metadata.loc[line_plot_models]
     line_fig = plot_lines(
         env, 
+        line_models['model'].tolist(),
         line_models['label'].tolist(), 
         line_models['color'].tolist(), 
         line_models['marker'].tolist(),
@@ -293,7 +295,7 @@ ams_empty_ggi_2_od, ams_empty_ggi_2_gini, ams_empty_ggi_2_lq = print_stats(ams_e
 
 ams_full_plot = [
     ['Baseline w1=1',   'amsterdam_20220810_09_33_35.507895', cp[0], '', 'o'],
-    # ['Baseline w2=1',   '',                                 cp[1], '-', 's'],
+    ['Baseline w2=1',   'amsterdam_20220807_22_43_37.708173', cp[1], '-', 's'],
     ['Var.Reg',         'amsterdam_20220809_00_40_57.169847', cp[2], '+', '^'],
     ['Lowest Quintile', 'amsterdam_20220808_11_53_12.554688', cp[3], 'o', 'v'],
     ['GGI',             'amsterdam_20220810_20_23_40.289417', cp[4], '/', 'D'],
@@ -375,8 +377,9 @@ xian_full_plot = [
     ['Baseline w1=1',   'xian_20220812_09_42_57.652815', cp[0], '', 'o'],
     ['Baseline w2=1',   'xian_20220812_14_44_22.783845', cp[1], '-', 's'],
     ['Var.Reg',         'xian_20220811_22_41_02.456631', cp[2], '+', '^'],
-    ['Lowest Quintile', 'xian_20220811_09_14_10.795964', cp[3], 'o', 'v'],
-    ['GGI',             'xian_20220812_18_59_40.094535', cp[4], '/', 'D'],
+    ['Lowest Quintile', 'xian_20220813_09_28_43.208981', cp[3], 'o', 'v'],
+    # ['GGI',             'xian_20220812_18_59_40.094535', cp[4], '/', 'D'],
+    ['GGI',             'xian_20220813_14_05_54.771330', cp[4], '/', 'D'],
 ]
 
 create_all_plots(xian, metrics_xian, xian_full_plot, 
