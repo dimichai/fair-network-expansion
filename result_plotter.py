@@ -358,9 +358,9 @@ xian_full_var_5 = metrics_xian[((metrics_xian['existing_lines'] != 0) & ~np.isna
                             & (metrics_xian['reward'] == 'group') 
                             & (metrics_xian['var_lambda'] == 5)]
 
-xian_full_ggi_2 = metrics_xian[((metrics_xian['existing_lines'] != 0) & ~np.isnan(metrics_xian['existing_lines']))
+xian_full_ggi_4 = metrics_xian[((metrics_xian['existing_lines'] != 0) & ~np.isnan(metrics_xian['existing_lines']))
                             & (metrics_xian['reward'] == 'ggi') 
-                            & (metrics_xian['ggi_weight'] == 2)]
+                            & (metrics_xian['ggi_weight'] == 4)]
 
 xian_full_rawls = metrics_xian[((metrics_xian['existing_lines'] != 0) & ~np.isnan(metrics_xian['existing_lines']))
                             & (metrics_xian['reward'] == 'rawls')]
@@ -369,7 +369,7 @@ xian_full_ses0_od, xian_full_ses0_gini, xian_full_ses0_lq =  print_stats(xian_fu
 xian_full_ses1_od, xian_full_ses1_gini, xian_full_ses1_lq =  print_stats(xian_full_ses1, 'xian_full_ses_1')
 xian_full_var_5_od, xian_full_var_5_gini, xian_full_var_5_lq = print_stats(xian_full_var_5, 'xian_full_var_5')
 xian_full_rawls_od, xian_full_rawls_gini, xian_full_rawls_lq = print_stats(xian_full_rawls, 'xian_full_rawls')
-xian_full_ggi_2_od, xian_full_ggi_2_gini, xian_full_ggi_2_lq = print_stats(xian_full_ggi_2, 'xian_full_ggi_2')
+xian_full_ggi_4_od, xian_full_ggi_4_gini, xian_full_ggi_4_lq = print_stats(xian_full_ggi_4, 'xian_full_ggi_4')
 
 
 
@@ -379,15 +379,15 @@ xian_full_plot = [
     ['Var.Reg',         'xian_20220811_22_41_02.456631', cp[2], '+', '^'],
     ['Lowest Quintile', 'xian_20220813_09_28_43.208981', cp[3], 'o', 'v'],
     # ['GGI',             'xian_20220812_18_59_40.094535', cp[4], '/', 'D'],
-    ['GGI',             'xian_20220813_14_05_54.771330', cp[4], '/', 'D'],
+    ['GGI',             'xian_20220814_12_10_27.594976', cp[4], '/', 'D'],
 ]
 
 create_all_plots(xian, metrics_xian, xian_full_plot, 
     bar_plot_models=['Baseline w1=1', 'Lowest Quintile', 'GGI'],
     line_plot_models=['Baseline w1=1', 'Baseline w2=1', 'Var.Reg', 'Lowest Quintile', 'GGI'],
     scatter_plot_models=['Baseline w1=1', 'Baseline w2=1', 'Var.Reg', 'Lowest Quintile', 'GGI'],
-    scatter_x=[xian_full_ses0_od, xian_full_ses1_od, xian_full_var_5_od, xian_full_rawls_od, xian_full_ggi_2_od],
-    scatter_y=[xian_full_ses0_gini, xian_full_ses1_gini, xian_full_var_5_gini, xian_full_rawls_gini, xian_full_ggi_2_gini],
+    scatter_x=[xian_full_ses0_od, xian_full_ses1_od, xian_full_var_5_od, xian_full_rawls_od, xian_full_ggi_4_od],
+    scatter_y=[xian_full_ses0_gini, xian_full_ses1_gini, xian_full_var_5_gini, xian_full_rawls_gini, xian_full_ggi_4_gini],
     plot_name_prefix='xian_full', 
     env_name="Xi'an")
 #%%
