@@ -102,6 +102,7 @@ class PointerActor(Actor):
 
 
 class MLPActor(Actor):
+    """An multi layer perceptron actor with a variable amount of fully connected layers"""
     def __init__(self, static_size, dynamic_size, hidden_size, nr_layers=5, num_gridblocks=25):
         super(MLPActor, self).__init__()
 
@@ -119,13 +120,14 @@ class MLPActor(Actor):
     def forward(self, static, dynamic, *args):
         batch_size, static_size, num_gridblocks = static.shape
         _, dynamic_size, _ = dynamic.shape
-        # Construct the current state s_t
 
         state = self.construct_state(static, dynamic)
         probs = self.mlp(state.reshape(batch_size, (num_gridblocks * static_size) + (num_gridblocks * dynamic_size)))
         return probs
 
 class MLPActor_Attention(Actor):
+    """An multi layer perceptron actor, based on the `MLPactor` that has an additional attention layer 
+       between the MLP output and two convolutional encodings of the static and dynamic grid representations"""
     def __init__(self, static_size, dynamic_size, hidden_size, nr_layers=5, num_gridblocks=25):
         super(MLPActor_Attention, self).__init__()
 
@@ -168,6 +170,7 @@ class MLPActor_Attention(Actor):
 
 
 class RNNActor(Actor):
+    """A recurrent neural network actor with a variable number of fully connected layers on top."""
     def __init__(self, static_size, dynamic_size, hidden_size, nr_layers=5, num_gridblocks=25, *args):
         super(RNNActor, self).__init__()
 
@@ -217,6 +220,8 @@ class RNNActor(Actor):
 
 
 class RNNActor_Attention(Actor):
+    """An recurrent neural network actor, based on the `RNNactor` that has an additional attention layer 
+       between the MLP output and two convolutional encodings of the static and dynamic grid representations"""
     def __init__(self, static_size, dynamic_size, hidden_size, num_gridblocks=25, *args):
         super(RNNActor_Attention, self).__init__()
 
@@ -271,6 +276,7 @@ class RNNActor_Attention(Actor):
         self.dynamic_hidden = self.dynamic_encoder(dynamic)
 
 class CNNActor(Actor):
+    """A convoluational neural network actor with a variable number of fully connected layers on top."""
     def __init__(self, static_size, dynamic_size, hidden_size, nr_layers=5, num_gridblocks=25, *args):
         super(CNNActor, self).__init__()
         self.grid_side_length = int(np.sqrt(num_gridblocks))

@@ -71,6 +71,8 @@ class Trainer(object):
         else:
             raise NotImplementedError("{} not available as actor architecture.".format(args.arch))
         print(f"Number of trainable parameters actor-critic: {actor_module.nr_parameters} / {critic_module.nr_parameters}")
+
+        # Change actor logic based on the constraints in use
         if not args.constraint_free:
             self.actor = DRL4Metro(actor_module,
                                 update_dynamic,
@@ -271,6 +273,7 @@ class Trainer(object):
                     torch.save(self.critic.state_dict(), save_dir / 'critic.pt')
             
             if not args.no_log and args.plot_every and epoch != 0 and epoch % args.plot_every == 0:
+                # Plot the best line so far in `result_dir/plots/`
                 self.actor.eval()
                 gen_lines = []
                 with torch.no_grad():
@@ -363,8 +366,9 @@ class Trainer(object):
         group_distances = np.zeros((len(gen_lines), len(self.environment.group_od_mx)))
         for i, line in enumerate(gen_lines):
             # Evaluate ODs
+            # OD mask used for accessibility index reward
             sat_od_mask = self.environment.satisfied_od_mask(line)
-            # satisfied_ods[i] = (sat_od_mask * self.environment.od_mx).sum().item()
+            # OD mask that ensures that the same reward scaling is applied during evaluation and testing
             satisfied_ods[i] = od_utility(tour_idx, self.environment, args.constraint_free)
 
             # Evaluate average distance to nearest public transport station.

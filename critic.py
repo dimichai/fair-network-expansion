@@ -77,6 +77,7 @@ class PointerCritic(Critic):  # static+ dynamic + matrix present
 
 
 class MLPCritic(Critic):
+    """A critic based on `MLPactor`"""
     def __init__(self, static_size, dynamic_size, hidden_size, nr_layers=4, num_gridblocks=25):
         super(MLPCritic, self).__init__()
 
@@ -94,12 +95,14 @@ class MLPCritic(Critic):
     def forward(self, static, dynamic, hidden_size, grid_x_size, grid_y_size):
         batch_size, static_size, num_gridblocks = static.shape
         _, dynamic_size, _ = dynamic.shape
+
         state = self.construct_state(static, dynamic)
         probs = self.mlp(state.reshape(batch_size, num_gridblocks * static_size + num_gridblocks * dynamic_size))
         return probs
 
 
 class CNNCritic(Critic):
+    """A critic based on `CNNactor`"""
     def __init__(self, static_size, dynamic_size, hidden_size, nr_layers=4, num_gridblocks=25, *args):
         super(CNNCritic, self).__init__()
         self.grid_side_length = int(np.sqrt(num_gridblocks))
@@ -116,11 +119,10 @@ class CNNCritic(Critic):
         self.mlp = nn.Sequential(*mlp, nn.Linear(hidden_size, 1))
 
     def forward(self, static, dynamic, *args):
-        batch_size, static_size, num_gridblocks = static.shape
+        batch_size, static_size, _ = static.shape
         _, dynamic_size, _ = dynamic.shape
 
         state = self.construct_state(static, dynamic)
         cnn = self.cnn(state.view(batch_size, static_size + dynamic_size, self.grid_side_length, self.grid_side_length))
         mlp = self.mlp(cnn)
-
         return mlp
