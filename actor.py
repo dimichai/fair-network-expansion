@@ -219,9 +219,7 @@ class DRL4Metro(nn.Module):
         return tour_idx, tour_logp
 
 class DRL4Metro_reworked(nn.Module):
-    """Same as above but without directionality constraints or mask
-    """
-
+    """Same as above but without directionality constraints or mask"""
     def __init__(self, actor, update_fn = None, v_to_g_fn = None):
         super(DRL4Metro_reworked, self).__init__()
 

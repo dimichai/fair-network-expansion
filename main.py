@@ -73,7 +73,7 @@ if __name__ == "__main__":
     parser.add_argument('--cf_dmin', default=None, type=float)
     parser.add_argument('--cf_dmax', default=None, type=float)
 
-    parser.add_argument('--plot_every', type=int, default=10)
+    parser.add_argument('--plot_every', type=int, default=None)
 
     args = parser.parse_args()
 
