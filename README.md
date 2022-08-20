@@ -35,7 +35,7 @@ and to reproduce the rationality rewarding models, run:
 for $linear, parabolic \in \text{FN}$.
 
 ## Evaluating the trained models
-The `--test` command line arguments makes sure that a trained model is also evaluated. This means that the maximum reward (also per group; `result_metric.json`), the loss curve (`loss.png`) and the average generated line (`average_generated_line.png` and `tour_idx_multiple.txt`) are directly available in the `result_dir`. 
+The `evaluate.ipynb` contains code to produce average reward tables and plots for the obtained runs. The `--test` command line arguments makes sure that a trained model is also evaluated. This means that the maximum reward (also per group; `result_metric.json`), the loss curve (`loss.png`) and the average generated line (`average_generated_line.png` and `tour_idx_multiple.txt`) are directly available in the `result_dir`. 
 
 ## Command examples
 
