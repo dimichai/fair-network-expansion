@@ -303,10 +303,10 @@ ams_full_plot = [
 
 create_all_plots(amsterdam, metrics_ams, ams_full_plot, 
     bar_plot_models=['Baseline w1=1', 'Lowest Quintile', 'GGI'],
-    line_plot_models=['Baseline w1=1', 'Lowest Quintile', 'GGI', 'Var.Reg'],
-    scatter_plot_models=['Baseline w1=1', 'Var.Reg', 'Lowest Quintile', 'GGI'],
-    scatter_x=[ams_full_ses0_od, ams_full_var_3_od, ams_full_rawls_od, ams_full_ggi_2_od],
-    scatter_y=[ams_full_ses0_gini, ams_full_var_3_gini, ams_full_rawls_gini, ams_full_ggi_2_gini],
+    line_plot_models=['Baseline w1=1', 'Baseline w2=1', 'Lowest Quintile', 'GGI', 'Var.Reg'],
+    scatter_plot_models=['Baseline w1=1', 'Baseline w2=1', 'Var.Reg', 'Lowest Quintile', 'GGI'],
+    scatter_x=[ams_full_ses0_od, ams_full_ses1_od, ams_full_var_3_od, ams_full_rawls_od, ams_full_ggi_2_od],
+    scatter_y=[ams_full_ses0_gini, ams_full_ses1_gini, ams_full_var_3_gini, ams_full_rawls_gini, ams_full_ggi_2_gini],
     plot_name_prefix='ams_full',
     env_name='Amsterdam')
 
