@@ -7,7 +7,7 @@ Transportation systems fundamentally impact human well-being, economic productiv
 ### Setup
 There are three files: `environment-mac.txt`, `environment-windows.txt`, `environment-cross-platform.yml`, which can be used to initialize the conda environment and run the scripts. For Linux, the cross-platform file should create the desired environment.
 
-The environments are already preprocessed and prepared.
+The Xi'an and Amsterdam city environments are already preprocessed and prepared.
 
 ### Training 
 Here are some examples to run the training process for different environments/reward functions:
