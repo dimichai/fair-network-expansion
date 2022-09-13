@@ -25,7 +25,7 @@ Where `result_path` should be replaced with the path of the trained model (autom
 
 ### Replicating reported results
 The reported results were obtained using the following argument setup:
-|           | Reward Function | --actor_lr | --critic_lr | --reward   | --ses_weight | --var_lambda | --ggi_weight |
+|           | Reward Function | actor_lr | critic_lr | reward   | ses_weight | var_lambda | ggi_weight |
 |-----------|-----------------|----------|-----------|----------|-----------:|------------|------------|
 | Xi'an     | Maximize OD     | 10e-4    | 10e-4     | weighted |          0 |          - |          - |
 |           | Maximize Equity | 10e-4    | 10e-4     | weighted |          1 |          - |          - |
