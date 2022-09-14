@@ -7,7 +7,7 @@ Transportation systems fundamentally impact human well-being, economic productiv
 ### Setup
 There are three files: `environment-mac.txt`, `environment-windows.txt`, `environment-cross-platform.yml`, which can be used to initialize the conda environment and run the scripts. For Linux, the cross-platform file should create the desired environment.
 
-The environments are already preprocessed and prepared.
+The Xi'an and Amsterdam city environments are already preprocessed and prepared.
 
 ### Training 
 Here are some examples to run the training process for different environments/reward functions:
@@ -22,3 +22,18 @@ Here are some examples to run the training process for different environments/re
 `python main.py --environment=xian --result_path=xian_20220814_12_31_19.406095 --test --groups_file=price_groups_5.txt --budget=210 --station_num_lim=45`
 
 Where `result_path` should be replaced with the path of the trained model (automatically created on the result folder).
+
+### Replicating reported results
+The reported results were obtained using the following argument setup:
+|           | Reward Function | actor_lr | critic_lr | reward   | ses_weight | var_lambda | ggi_weight |
+|-----------|-----------------|----------|-----------|----------|-----------:|------------|------------|
+| Xi'an     | Maximize OD     | 10e-4    | 10e-4     | weighted |          0 |          - |          - |
+|           | Maximize Equity | 10e-4    | 10e-4     | weighted |          1 |          - |          - |
+|           | Var. Reg.       | 10e-4    | 10e-4     | group    |          - |          5 |          - |
+|           | Lowest Quintile | 10e-4    | 10e-4     | rawls    |          - |          - |          - |
+|           | GGI             | 10e-4    | 10e-4     | ggi      |          - |          - |          4 |
+| Amsterdam | Maximize OD     | 10e-4    | 10e-4     | weighed  |          0 |          - |          - |
+|           | Maximize Equity | 10e-4    | 10e-4     | weighted |          1 |          - |          - |
+|           | Var. Reg.       | 10e-4    | 10e-4     | group    |          - |          3 |          - |
+|           | Lowest Quintile | 15e-4    | 15e-4     | rawls    |          - |          - |          - |
+|           | GGI             | 10e-4    | 10e-4     | ggi      |          - |          - |          2 |
