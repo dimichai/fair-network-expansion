@@ -11,7 +11,9 @@ ams_nb = gpd.read_file('./ams-districts.geojson', crs='EPSG:4326')
 # ams_nb = gpd.read_file('./ams-neighbourhoods.geojson')
 # For population/income data by buurt/wijk
 ams_ses = pd.read_csv('./ams-ds-ses.csv')
-ams_ses = ams_ses[['WK_CODE', 'pop', 'avg_inc_per_res', 'house_price']]
+# ams_ses['p_dutch_w_migr'] = ams_ses['p_dutch'] + ams_ses['p_w_migr']
+ams_ses['nr_dutch_w'] = ams_ses['nr_dutch'] + ams_ses['nr_w_migr']
+ams_ses = ams_ses[['WK_CODE', 'pop', 'avg_inc_per_res', 'house_price', 'nr_dutch_w', 'nr_nw_migr']]
 
 
 # Amersfoort / RD New -- Netherlands - Holland - Dutch
@@ -111,12 +113,20 @@ plt.bar_label(bars, labels=counts)
 plt.title('Distribution of covered neighborhoods per square grid')
 plt.savefig('./grid_to_nb_distribution.png')
 
-# Assign population to each grid.
+# Assign population to each grid cell.
 overlay_pct = overlay_pct.reset_index().merge(ams_ses, on='WK_CODE', how='left')
 overlay_pct['grid_pop'] = overlay_pct['area_overlay_pct'] * overlay_pct['pop']
 overlay_pct['grid_pop'] = overlay_pct['grid_pop'].round()
 gridpop = overlay_pct.groupby('v')[['grid_pop']].sum().reset_index()
 
+# Assign population of nw, w-dutch people to each grid cell.
+overlay_pct['nr_dutch_w'] = (overlay_pct['area_overlay_pct'] * overlay_pct['nr_dutch_w']).round()
+dutchwpop = overlay_pct.groupby('v')[['nr_dutch_w']].sum().reset_index()
+
+overlay_pct['nr_nw'] = (overlay_pct['area_overlay_pct'] * overlay_pct['nr_nw_migr']).round()
+nwpop = overlay_pct.groupby('v')[['nr_nw']].sum().reset_index()
+
+#%%
 # Assign average income to each grid.
 # https://stackoverflow.com/questions/31521027/groupby-weighted-average-and-sum-in-pandas-dataframe
 def weighted_average(df, data_col, weight_col, by_col):
