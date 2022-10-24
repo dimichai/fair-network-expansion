@@ -488,11 +488,26 @@ ax.set_title('Excluding Centraal, Zuid and Amstelstation')
 fig.colorbar(im, orientation='vertical')
 fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_gvb_checkouts.png')
 
-# %%
+# %% Important files for creating the Environment Object
+# Average house price per grid cell.
 with open('./average_house_price_gid.txt', 'w') as f:
     for i, row in grid.iterrows():
         if np.isnan(row['grid_house_price']):
             continue
         
         f.write(f'{row["g_x"]},{row["g_y"]},{row["grid_house_price"]}\n')
-# %%
+
+# Population distribution per grid cell.
+with open('./dutch_western_popd_gid.txt', 'w') as f:
+    for i, row in grid.iterrows():
+        if np.isnan(row['p_dutch_w']):
+            continue
+        
+        f.write(f'{row["g_x"]},{row["g_y"]},{row["p_dutch_w"]}\n')
+
+with open('./nonwestern_popd_gid.txt', 'w') as f:
+    for i, row in grid.iterrows():
+        if np.isnan(row['p_nw']):
+            continue
+        
+        f.write(f'{row["g_x"]},{row["g_y"]},{row["p_nw"]}\n')
