@@ -144,12 +144,13 @@ class Environment(object):
         
         return od_mask
 
-    def __init__(self, env_path, groups_file=None, ignore_existing_lines=False):
+    def __init__(self, env_path, groups_file=None, group_weights_files=None, ignore_existing_lines=False):
         """Initialise city environment.
 
         Args:
             env_path (Path): path to the folder that contains the needed initialisation files of the environment.
             groups_file (str): file within envirnoment folder that contains group membership for each grid square.
+            group_weights_files (str): files within envirnoment folder that contain group weights for each grid square.
             ignore_existing_lines (boolean): if set to true, the environment will not load the current existing lines of the environment (check config.txt).
         """
         super(Environment, self).__init__()
@@ -199,6 +200,12 @@ class Environment(object):
                 group_mask[group_squares, :] = 1
                 group_mask[:, group_squares] = 1
                 self.group_od_mx.append(group_mask * self.od_mx)
+        
+        self.group_weights = []
+        if group_weights_files:
+            group_weights_files = group_weights_files[0].split(' ')
+            for f in group_weights_files:
+                self.group_weights.append(matrix_from_file(env_path / f, self.grid_x_size, self.grid_y_size))
 
         # Read existing metro lines of the environment.
         if not ignore_existing_lines and config.has_option('config', 'existing_lines'):

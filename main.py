@@ -42,12 +42,13 @@ if __name__ == "__main__":
     parser.add_argument('--ggi_weight', default=2, type=float) # weight to assign when calculating the ggi of the satisfied OD among groups, only works for --reward=ggi
 
     parser.add_argument('--groups_file', default=None, type=str) # file that contains group membership of each grid square (e.g. when each square belongs to a certain income bin).
+    parser.add_argument('--group_weights_files', default=None, nargs="*") # files that contain group weights of each grid square (e.g. when each square has a percentage of a certain group distribution).
     parser.add_argument('--no_log', action='store_true', default=False)
     parser.add_argument('--use_abs', action='store_true', default=False) # if true, it will use absolute values of satisfied OD as reward (default is to use percentage satsified OD) (does not work in weighted reward)
 
     args = parser.parse_args()
 
-    environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file, ignore_existing_lines=args.ignore_existing_lines)
+    environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file, group_weights_files=args.group_weights_files, ignore_existing_lines=args.ignore_existing_lines)
     constraints = ForwardConstraints(environment.grid_x_size, environment.grid_y_size, environment.existing_lines_full, environment.grid_to_vector)
     trainer = Trainer(environment, constraints, args)
 
