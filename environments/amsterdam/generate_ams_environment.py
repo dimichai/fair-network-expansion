@@ -122,9 +122,11 @@ gridpop = overlay_pct.groupby('v')[['grid_pop']].sum().reset_index()
 # Assign population of nw, w-dutch people to each grid cell.
 overlay_pct['nr_dutch_w'] = (overlay_pct['area_overlay_pct'] * overlay_pct['nr_dutch_w']).round()
 dutchwpop = overlay_pct.groupby('v')[['nr_dutch_w']].sum().reset_index()
+dutchwpop['p_dutch_w'] = dutchwpop['nr_dutch_w']/dutchwpop['nr_dutch_w'].sum()
 
 overlay_pct['nr_nw'] = (overlay_pct['area_overlay_pct'] * overlay_pct['nr_nw_migr']).round()
 nwpop = overlay_pct.groupby('v')[['nr_nw']].sum().reset_index()
+nwpop['p_nw'] = nwpop['nr_nw']/nwpop['nr_nw'].sum()
 
 #%%
 # Assign average income to each grid.
@@ -145,6 +147,8 @@ grid = grid.merge(gridpop, on='v', how='left')
 grid.loc[pd.isna(grid['grid_pop']), 'grid_pop'] = 0
 grid = grid.merge(gridinc, on='v', how='left')
 grid = grid.merge(gridhouseprice, on='v', how='left')
+grid = grid.merge(dutchwpop, on='v', how='left')
+grid = grid.merge(nwpop, on='v', how='left')
 
 # Population Density per square
 grid['pop_density_km'] = grid['grid_pop'] / grid['area_grid_km']
@@ -155,11 +159,15 @@ grid.to_csv('./amsterdam_grid.csv', index=False)
 gridenv = np.zeros((grid_x_size, grid_y_size))
 gridenvinc = np.zeros((grid_x_size, grid_y_size))
 gridenvhp = np.zeros((grid_x_size, grid_y_size))
+gridenvdw = np.zeros((grid_x_size, grid_y_size))
+gridevnnw = np.zeros((grid_x_size, grid_y_size))
 
 for i, row in grid.iterrows():
     gridenv[row['g_x'], row['g_y']] = row['grid_pop']
     gridenvinc[row['g_x'], row['g_y']] = row['grid_avg_inc']
     gridenvhp[row['g_x'], row['g_y']] = row['grid_house_price']
+    gridenvdw[row['g_x'], row['g_y']] = row['p_dutch_w']
+    gridevnnw[row['g_x'], row['g_y']] = row['p_nw']
 
 #%%
 fig, ax = plt.subplots(figsize=(15, 10))
@@ -255,6 +263,19 @@ im = ax.imshow(gridenvhp, cmap='Blues')
 fig.suptitle('Amsterdam Grid Avg House Price', fontsize=30)
 fig.colorbar(im, orientation='vertical')
 fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_avg_house_price.png')
+
+
+fig, ax = plt.subplots(figsize=(15, 10))
+im = ax.imshow(gridenvdw, cmap='Blues')
+fig.suptitle('Amsterdam Grid Dutch/Western Population Distribution', fontsize=30)
+fig.colorbar(im, orientation='vertical')
+fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_dutch_western_distr.png')
+
+fig, ax = plt.subplots(figsize=(15, 10))
+im = ax.imshow(gridevnnw, cmap='Blues')
+fig.suptitle('Amsterdam Grid Non-Western Population Distribution', fontsize=30)
+fig.colorbar(im, orientation='vertical')
+fig.savefig(f'./amsterdam_env_{len(rows)}x{len(cols)}_non_western_distr.png')
 
 # %% Print labels of the Grid
 fig, ax = plt.subplots(figsize=(50, 40))
