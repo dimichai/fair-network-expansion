@@ -183,6 +183,8 @@ class Environment(object):
         except FileNotFoundError:
             print('Price matrix not available.')
         
+        assert not (groups_file and len(group_weights_files) > 0), 'Provide either groups_file or group_weights_files, cannot have both'
+
         # If there are group memberships of each grid square, then create an OD matrix for each group.
         self.group_od_mx = None # initialize it so we can check later on if it has any value
         if groups_file:
@@ -204,8 +206,19 @@ class Environment(object):
         self.group_weights = []
         if group_weights_files:
             group_weights_files = group_weights_files[0].split(' ')
+            # Create a group-specific od matrix for each group.
+            self.group_od_mx = []
             for f in group_weights_files:
+                gw = matrix_from_file(env_path / f, self.grid_x_size, self.grid_y_size)
                 self.group_weights.append(matrix_from_file(env_path / f, self.grid_x_size, self.grid_y_size))
+
+                group_mask = torch.zeros(self.od_mx.shape, device=device)
+                group_squares = self.grid_to_vector(gw.nonzero())
+
+                group_mask[group_squares, :] =  gw[gw > 0].reshape(-1, 1).expand(-1, group_mask.shape[1])
+                group_mask[:, group_squares] =  gw[gw > 0].reshape(1, -1).expand(group_mask.shape[0], -1)
+                
+                self.group_od_mx.append(group_mask * self.od_mx)
 
         # Read existing metro lines of the environment.
         if not ignore_existing_lines and config.has_option('config', 'existing_lines'):

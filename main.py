@@ -36,6 +36,7 @@ if __name__ == "__main__":
         # - ai_economist: reward used by the ai_economist paper: total_utility * (1-gini(total_utility))
         # - rawls: returns the total satisfied OD of the lowest quintile group
         # - ggi: generalized gini index over group -> weight controlled by --ggi_weight
+        # - group_weighted: group based utility but each cell has a different weight for each group -> requires --group_weights_files
     parser.add_argument('--reward', default='weighted', type=str)
     parser.add_argument('--ses_weight', default=0, type=float) # weight to assign to the socio-economic status (equity)reward, only works for --reward=weighted
     parser.add_argument('--var_lambda', default=0, type=float) # weight to assign to the variance of the satisfied OD among groups, only works for --reward=group
