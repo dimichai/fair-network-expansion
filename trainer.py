@@ -147,7 +147,15 @@ class Trainer(object):
                 elif args.reward == 'ai_economist':
                     reward = group_utility(tour_idx, self.environment, mult_gini=True, use_pct=not args.use_abs)
                 elif args.reward == 'rawls':
-                    reward = lowest_quintile_utility(tour_idx, self.environment, use_pct=not args.use_abs)
+                    # TODO CHANGE
+                    # I messed up with the arguments and gave the dutch/western group as first and the non-western as second,
+                    # so for this particular change the group we care about is the one with index = 1. But this needs to change in general.
+                    group_idx = 0
+                    if args.group_weights_files:
+                        if len(args.group_weights_files) > 0:
+                            group_idx = 1
+                    
+                    reward = lowest_quintile_utility(tour_idx, self.environment, use_pct=not args.use_abs, group_idx=group_idx)
                 elif args.reward == 'ggi':
                     reward = ggi(tour_idx, self.environment, args.ggi_weight, use_pct=not args.use_abs)
 

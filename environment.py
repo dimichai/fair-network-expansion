@@ -183,7 +183,8 @@ class Environment(object):
         except FileNotFoundError:
             print('Price matrix not available.')
         
-        assert not (groups_file and len(group_weights_files) > 0), 'Provide either groups_file or group_weights_files, cannot have both'
+        if group_weights_files:
+            assert not (groups_file and len(group_weights_files) > 0), 'Provide either groups_file or group_weights_files, cannot have both'
 
         # If there are group memberships of each grid square, then create an OD matrix for each group.
         self.group_od_mx = None # initialize it so we can check later on if it has any value

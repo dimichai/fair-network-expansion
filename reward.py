@@ -59,13 +59,14 @@ def group_utility(tour_idx: torch.Tensor, environment: Environment, var_lambda=0
     else:
         return group_rw.sum() - var_lambda * group_rw.var()
 
-def lowest_quintile_utility(tour_idx: torch.Tensor, environment: Environment, use_pct=True):
+def lowest_quintile_utility(tour_idx: torch.Tensor, environment: Environment, use_pct=True, group_idx=0):
     """Based on Rawl's theory of justice - returns the satisfied OD (or % depending on use_pct) of the lowest quintile.
 
     Args:
         tour_idx (torch.Tensor): the generated line.
         environment (Environment): the environment where the line is generated.
         use_pct (boolean, optional): if True, reward will be calculated using percentage of satisfied OD per group. If false, it will use absolute values. Defaults to True.
+        group_idx (int, optional): Which group to optimize for -- defaults to the first one.
     Returns:
         torch.Tensor: total reward.
     """
@@ -73,9 +74,9 @@ def lowest_quintile_utility(tour_idx: torch.Tensor, environment: Environment, us
 
     sat_od_mask = environment.satisfied_od_mask(tour_idx)
 
-    sat_od = (environment.group_od_mx[0] * sat_od_mask).sum().item()
+    sat_od = (environment.group_od_mx[group_idx] * sat_od_mask).sum().item()
     if use_pct:
-        return sat_od / environment.group_od_mx[0].sum()
+        return sat_od / environment.group_od_mx[group_idx].sum()
     else:
         return sat_od
 
