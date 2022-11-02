@@ -3,6 +3,7 @@
 from collections import defaultdict
 from genericpath import isfile
 from pathlib import Path
+from tokenize import group
 from typing import List
 import matplotlib.pyplot as plt
 import json
@@ -84,11 +85,14 @@ def print_stats(df, model:str):
 
     return od, gini, lq
 
-def plot_bar(model_names, model_labels, model_colors, model_hatches, metrics_df: pd.DataFrame, env_name: str, figsize=(10, 5), legend_loc='best'):
+def plot_bar(model_names, model_labels, model_colors, model_hatches, 
+            metrics_df: pd.DataFrame, env_name: str, figsize=(10, 5), 
+            legend_loc='best',
+            group_names=('1st quintile', '2nd', '3rd', '4th', '5th')):
     # https://stackoverflow.com/questions/10369681/how-to-plot-bar-graphs-with-same-x-coordinates-side-by-side-dodged
     # Width of a bar 
     width = 0.3
-    ind = np.arange(5)
+    ind = np.arange(len(group_names))
     xpos = ind
     fig, ax = plt.subplots(figsize=figsize)
     for i, model in enumerate(model_names):
@@ -104,7 +108,7 @@ def plot_bar(model_names, model_labels, model_colors, model_hatches, metrics_df:
     plt.ylabel('% of total satisfied flows', fontsize=32)
     
     plt.title(f"Benefits Distribution among Groups - {env_name}", fontsize=32)
-    plt.xticks(ind + width * 3 / 2, ('1st quintile', '2nd', '3rd', '4th', '5th'))
+    plt.xticks(ind + width * 3 / 2, group_names)
 
     ax.legend(loc=legend_loc)
 
@@ -169,7 +173,7 @@ def plot_scatter(x,y,ax=None, markers=None, labels=None, colors=None, env_name=N
 
     ax.set_xlabel('% of total satisfied flows', fontsize=32)
     ax.set_ylabel('Gini Index', fontsize=32)
-    fig.suptitle(f'Equity vs Utility - {env_name}', fontsize=32)
+    fig.suptitle(f'Equity vs Efficiency - {env_name}', fontsize=32)
     ax.set_ylim((0,0.8))
 
 
@@ -179,7 +183,7 @@ def plot_scatter(x,y,ax=None, markers=None, labels=None, colors=None, env_name=N
     fig.tight_layout()
     return fig
 
-def create_all_plots(env: Environment, metrics_df: pd.DataFrame, metadata: List, bar_plot_models: List, line_plot_models: List, scatter_plot_models: List, scatter_x: List, scatter_y: List, plot_name_prefix: None, env_name=None, figsize=(12,8)):
+def create_all_plots(env: Environment, metrics_df: pd.DataFrame, metadata: List, bar_plot_models: List, line_plot_models: List, scatter_plot_models: List, scatter_x: List, scatter_y: List, plot_name_prefix: None, env_name=None, figsize=(12,8), group_names=('1st quintile', '2nd', '3rd', '4th', '5th')):
     metadata = pd.DataFrame(metadata, columns=['label', 'model', 'color', 'pattern', 'marker'])
     metadata.index = metadata['label']
 
@@ -191,7 +195,8 @@ def create_all_plots(env: Environment, metrics_df: pd.DataFrame, metadata: List,
         bar_models['pattern'].tolist(),
         metrics_df[metrics_df.index.isin(bar_models['model'].tolist())], 
         env_name=env_name, 
-        figsize=figsize)
+        figsize=figsize,
+        group_names=group_names)
 
     bar_fig.savefig(f'./{plot_name_prefix}_bar.png')
 
@@ -234,48 +239,58 @@ metrics_ams['lowest_quintile_sat_od_pct'] = metrics_ams['mean_sat_od_by_group_pc
 metrics_ams['lowest_quintile_sat_od_pct'] = metrics_ams['lowest_quintile_sat_od_pct'] * 100
 metrics_ams.index = metrics_ams['model']
 
-# %% Amsterdam averages calculation
+# %% Amsterdam Income Quintiles averages calculation
 ams_empty_ses1 = metrics_ams[ ((metrics_ams['existing_lines'] == 0) | np.isnan(metrics_ams['existing_lines']))
+                            & (pd.isnull(metrics_ams['group_weights_files']))
                             & (metrics_ams['reward'] == 'weighted') 
                             & (metrics_ams['ses_weight'] == 1)
                             & (metrics_ams['var_lambda'] == 0)]
 
 ams_empty_ses0 = metrics_ams[((metrics_ams['existing_lines'] == 0) | np.isnan(metrics_ams['existing_lines']))
+                            & (pd.isnull(metrics_ams['group_weights_files']))
                             & (metrics_ams['reward'] == 'weighted') 
                             & (metrics_ams['ses_weight'] == 0)
                             & (metrics_ams['var_lambda'] == 0)]
 
 ams_empty_ggi_2 = metrics_ams[((metrics_ams['existing_lines'] == 0) | np.isnan(metrics_ams['existing_lines']))
+                            & (pd.isnull(metrics_ams['group_weights_files']))
                             & (metrics_ams['reward'] == 'ggi') 
                             & (metrics_ams['ggi_weight'] == 2)]
 
 ams_empty_var_3 = metrics_ams[((metrics_ams['existing_lines'] == 0) | np.isnan(metrics_ams['existing_lines']))
+                            & (pd.isnull(metrics_ams['group_weights_files']))
                             & (metrics_ams['reward'] == 'group') 
                             & (metrics_ams['var_lambda'] == 3)]
 
 ams_empty_rawls = metrics_ams[((metrics_ams['existing_lines'] == 0) | np.isnan(metrics_ams['existing_lines']))
+                            & (pd.isnull(metrics_ams['group_weights_files']))
                             & (metrics_ams['reward'] == 'rawls')]
 
 
 ams_full_ses1 = metrics_ams[ ((metrics_ams['existing_lines'] != 0) & ~np.isnan(metrics_ams['existing_lines']))
+                            & (pd.isnull(metrics_ams['group_weights_files']))
                             & (metrics_ams['reward'] == 'weighted') 
                             & (metrics_ams['ses_weight'] == 1)
                             & (metrics_ams['var_lambda'] == 0)]
 
 ams_full_ses0 = metrics_ams[((metrics_ams['existing_lines'] != 0) & ~np.isnan(metrics_ams['existing_lines']))
+                            & (pd.isnull(metrics_ams['group_weights_files']))
                             & (metrics_ams['reward'] == 'weighted') 
                             & (metrics_ams['ses_weight'] == 0)
                             & (metrics_ams['var_lambda'] == 0)]
 
 ams_full_var_3 = metrics_ams[((metrics_ams['existing_lines'] != 0) & ~np.isnan(metrics_ams['existing_lines']))
+                            & (pd.isnull(metrics_ams['group_weights_files']))
                             & (metrics_ams['reward'] == 'group') 
                             & (metrics_ams['var_lambda'] == 3)]
 
 ams_full_ggi_2 = metrics_ams[((metrics_ams['existing_lines'] != 0) & ~np.isnan(metrics_ams['existing_lines']))
+                            & (pd.isnull(metrics_ams['group_weights_files']))
                             & (metrics_ams['reward'] == 'ggi') 
                             & (metrics_ams['ggi_weight'] == 2)]
 
 ams_full_rawls = metrics_ams[((metrics_ams['existing_lines'] != 0) & ~np.isnan(metrics_ams['existing_lines']))
+                            & (pd.isnull(metrics_ams['group_weights_files']))
                             & (metrics_ams['reward'] == 'rawls')]
 
 
@@ -294,17 +309,17 @@ ams_empty_ggi_2_od, ams_empty_ggi_2_gini, ams_empty_ggi_2_lq = print_stats(ams_e
 #%% Amsterdam Full environment
 
 ams_full_plot = [
-    ['Baseline w1=1',   'amsterdam_20220810_09_33_35.507895', cp[0], '', 'o'],
-    ['Baseline w2=1',   'amsterdam_20220807_22_43_37.708173', cp[1], '-', 's'],
+    ['Max. Effic.',   'amsterdam_20220810_09_33_35.507895', cp[0], '', 'o'],
+    ['Access. Index',   'amsterdam_20220807_22_43_37.708173', cp[1], '-', 's'],
     ['Var.Reg',         'amsterdam_20220809_00_40_57.169847', cp[2], '+', '^'],
-    ['Lowest Quintile', 'amsterdam_20220808_11_53_12.554688', cp[3], 'o', 'v'],
+    ['Rawls',           'amsterdam_20220808_11_53_12.554688', cp[3], 'o', 'v'],
     ['GGI',             'amsterdam_20220810_20_23_40.289417', cp[4], '/', 'D'],
 ]
 
 create_all_plots(amsterdam, metrics_ams, ams_full_plot, 
-    bar_plot_models=['Baseline w1=1', 'Lowest Quintile', 'GGI'],
-    line_plot_models=['Baseline w1=1', 'Baseline w2=1', 'Lowest Quintile', 'GGI', 'Var.Reg'],
-    scatter_plot_models=['Baseline w1=1', 'Baseline w2=1', 'Var.Reg', 'Lowest Quintile', 'GGI'],
+    bar_plot_models=['Max. Effic.', 'Rawls', 'GGI'],
+    line_plot_models=['Max. Effic.', 'Access. Index', 'Rawls', 'GGI', 'Var.Reg'],
+    scatter_plot_models=['Max. Effic.', 'Access. Index', 'Var.Reg', 'Rawls', 'GGI'],
     scatter_x=[ams_full_ses0_od, ams_full_ses1_od, ams_full_var_3_od, ams_full_rawls_od, ams_full_ggi_2_od],
     scatter_y=[ams_full_ses0_gini, ams_full_ses1_gini, ams_full_var_3_gini, ams_full_rawls_gini, ams_full_ggi_2_gini],
     plot_name_prefix='ams_full',
@@ -312,21 +327,74 @@ create_all_plots(amsterdam, metrics_ams, ams_full_plot,
 
 
 ams_empty_plot = [
-    ['Baseline w1=1',   'amsterdam_20220705_18_17_31.196986', cp[0], '', 'o'],
-    ['Baseline w2=1',   'amsterdam_20220705_18_25_09.654804', cp[1], '-', 's'],
+    ['Max. Effic.',   'amsterdam_20220705_18_17_31.196986', cp[0], '', 'o'],
+    ['Access. Index',   'amsterdam_20220705_18_25_09.654804', cp[1], '-', 's'],
     ['Var.Reg',         'amsterdam_20220706_11_15_16.765435', cp[2], '+', '^'],
-    ['Lowest Quintile', 'amsterdam_20220810_09_26_45.963603', cp[3], 'o', 'v'],
+    ['Rawls', 'amsterdam_20220810_09_26_45.963603', cp[3], 'o', 'v'],
     ['GGI',             'amsterdam_20220708_11_21_23.191428', cp[4], '/', 'D'],
 ]
 
 create_all_plots(amsterdam, metrics_ams, ams_empty_plot, 
-    bar_plot_models=['Baseline w1=1', 'Lowest Quintile', 'GGI'],
-    line_plot_models=['Baseline w1=1', 'Baseline w2=1', 'Lowest Quintile', 'GGI', 'Var.Reg'],
-    scatter_plot_models=['Baseline w1=1', 'Baseline w2=1', 'Var.Reg', 'Lowest Quintile', 'GGI'],
+    bar_plot_models=['Max. Effic.', 'Rawls', 'GGI'],
+    line_plot_models=['Max. Effic.', 'Access. Index', 'Rawls', 'GGI', 'Var.Reg'],
+    scatter_plot_models=['Max. Effic.', 'Access. Index', 'Var.Reg', 'Rawls', 'GGI'],
     scatter_x=[ams_empty_ses0_od, ams_empty_ses1_od, ams_empty_var_3_od, ams_empty_rawls_od, ams_empty_ggi_2_od],
     scatter_y=[ams_empty_ses0_gini, ams_empty_ses1_gini, ams_empty_var_3_gini, ams_empty_rawls_gini, ams_empty_ggi_2_gini],
     plot_name_prefix='ams_empty',
     env_name='Amsterdam')
+
+
+#%% Amsterdam Weighted groups Experiment (Western-non-western)
+ams_w_empty_ses1 = metrics_ams[ ((metrics_ams['existing_lines'] == 0) | np.isnan(metrics_ams['existing_lines']))
+                            & (~pd.isnull(metrics_ams['group_weights_files']))
+                            & (metrics_ams['reward'] == 'weighted') 
+                            & (metrics_ams['ses_weight'] == 1)
+                            & (metrics_ams['var_lambda'] == 0)]
+
+ams_w_empty_ses0 = metrics_ams[((metrics_ams['existing_lines'] == 0) | np.isnan(metrics_ams['existing_lines']))
+                            & (~pd.isnull(metrics_ams['group_weights_files']))
+                            & (metrics_ams['reward'] == 'weighted') 
+                            & (metrics_ams['ses_weight'] == 0)
+                            & (metrics_ams['var_lambda'] == 0)]
+
+ams_w_empty_ggi_2 = metrics_ams[((metrics_ams['existing_lines'] == 0) | np.isnan(metrics_ams['existing_lines']))
+                            & (~pd.isnull(metrics_ams['group_weights_files']))
+                            & (metrics_ams['reward'] == 'ggi') 
+                            & (metrics_ams['ggi_weight'] == 2)]
+
+ams_w_empty_var_3 = metrics_ams[((metrics_ams['existing_lines'] == 0) | np.isnan(metrics_ams['existing_lines']))
+                            & (~pd.isnull(metrics_ams['group_weights_files']))
+                            & (metrics_ams['reward'] == 'group') 
+                            & (metrics_ams['var_lambda'] == 3)]
+
+ams_w_empty_rawls = metrics_ams[((metrics_ams['existing_lines'] == 0) | np.isnan(metrics_ams['existing_lines']))
+                            & (~pd.isnull(metrics_ams['group_weights_files']))
+                            & (metrics_ams['actor_lr'] == 15e-4)
+                            & (metrics_ams['reward'] == 'rawls')]
+
+ams_w_empty_ses1_od, ams_w_empty_ses1_gini, ams_w_empty_ses1_lq =  print_stats(ams_w_empty_ses1, 'ams_w_empty_ses1')
+ams_w_empty_ses0_od, ams_w_empty_ses0_gini, ams_w_empty_ses0_lq =  print_stats(ams_w_empty_ses0, 'ams_w_empty_ses_0')
+ams_w_empty_ggi_2_od, ams_w_empty_ggi_2_gini, ams_w_empty_ggi_2_lq = print_stats(ams_w_empty_ggi_2, 'ams_w_empty_ggi_2')
+ams_w_empty_var_3_od, ams_w_empty_var_3_gini, ams_w_empty_var_3_lq = print_stats(ams_w_empty_var_3, 'ams_w_empty_var_3')
+ams_w_empty_rawls_od, ams_w_empty_rawls_gini, ams_w_empty_rawls_lq = print_stats(ams_w_empty_rawls, 'ams_w_empty_rawls')
+
+ams_w_empty_plot = [
+    ['Max. Effic.',     'amsterdam_20221025_18_07_17.271867', cp[0], '', 'o'],
+    ['Access. Index',   'amsterdam_20221026_16_31_11.370638', cp[1], '-', 's'],
+    ['Var.Reg',         'amsterdam_20221026_18_17_07.310764', cp[2], '+', '^'],
+    ['Rawls',           'amsterdam_20221027_09_51_21.915196', cp[3], 'o', 'v'],
+    ['GGI',             'amsterdam_20221026_17_28_17.106600', cp[4], '/', 'D'],
+]
+
+create_all_plots(amsterdam, metrics_ams, ams_w_empty_plot, 
+    bar_plot_models=['Max. Effic.', 'Rawls', 'GGI'],
+    line_plot_models=['Max. Effic.', 'Access. Index', 'Rawls', 'GGI', 'Var.Reg'],
+    scatter_plot_models=['Max. Effic.', 'Access. Index', 'Var.Reg', 'Rawls', 'GGI'],
+    scatter_x=[ams_w_empty_ses0_od, ams_w_empty_ses1_od, ams_w_empty_var_3_od, ams_w_empty_rawls_od, ams_w_empty_ggi_2_od],
+    scatter_y=[ams_w_empty_ses0_gini, ams_w_empty_ses1_gini, ams_w_empty_var_3_gini, ams_w_empty_rawls_gini, ams_w_empty_ggi_2_gini],
+    plot_name_prefix='ams_w_empty',
+    env_name='Amsterdam',
+    group_names=('Dutch/Western', 'Non-Western'))
 
 
 #%% XIAN
@@ -374,18 +442,18 @@ xian_full_ggi_4_od, xian_full_ggi_4_gini, xian_full_ggi_4_lq = print_stats(xian_
 
 
 xian_full_plot = [
-    ['Baseline w1=1',   'xian_20220812_09_42_57.652815', cp[0], '', 'o'],
-    ['Baseline w2=1',   'xian_20220812_14_44_22.783845', cp[1], '-', 's'],
+    ['Max. Effic.',   'xian_20220812_09_42_57.652815', cp[0], '', 'o'],
+    ['Access. Index',   'xian_20220812_14_44_22.783845', cp[1], '-', 's'],
     ['Var.Reg',         'xian_20220811_22_41_02.456631', cp[2], '+', '^'],
-    ['Lowest Quintile', 'xian_20220813_09_28_43.208981', cp[3], 'o', 'v'],
+    ['Rawls', 'xian_20220813_09_28_43.208981', cp[3], 'o', 'v'],
     # ['GGI',             'xian_20220812_18_59_40.094535', cp[4], '/', 'D'],
     ['GGI',             'xian_20220814_12_10_27.594976', cp[4], '/', 'D'],
 ]
 
 create_all_plots(xian, metrics_xian, xian_full_plot, 
-    bar_plot_models=['Baseline w1=1', 'Lowest Quintile', 'GGI'],
-    line_plot_models=['Baseline w1=1', 'Baseline w2=1', 'Var.Reg', 'Lowest Quintile', 'GGI'],
-    scatter_plot_models=['Baseline w1=1', 'Baseline w2=1', 'Var.Reg', 'Lowest Quintile', 'GGI'],
+    bar_plot_models=['Max. Effic.', 'Rawls', 'GGI'],
+    line_plot_models=['Max. Effic.', 'Access. Index', 'Var.Reg', 'Rawls', 'GGI'],
+    scatter_plot_models=['Max. Effic.', 'Access. Index', 'Var.Reg', 'Rawls', 'GGI'],
     scatter_x=[xian_full_ses0_od, xian_full_ses1_od, xian_full_var_5_od, xian_full_rawls_od, xian_full_ggi_4_od],
     scatter_y=[xian_full_ses0_gini, xian_full_ses1_gini, xian_full_var_5_gini, xian_full_rawls_gini, xian_full_ggi_4_gini],
     plot_name_prefix='xian_full', 
