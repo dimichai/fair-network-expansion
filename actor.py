@@ -252,7 +252,7 @@ class DRL4Metro(nn.Module):
         # Static elements only need to be processed once, and can be used across
         # all 'pointing' iterations. When / if the dynamic elements change,
         # their representations will need to get calculated again.
-        static_hidden = self.static_encoder(static) #static: Array of size (batch_size, feats, num_cities)
+        static_hidden = self.static_encoder(static) #static: Array of size (batch_size, feats, num_cells)
         dynamic_hidden = self.dynamic_encoder(dynamic)
         
         last_hh = torch.zeros((batch_size,dynamic_hidden.size()[1]),device=device,requires_grad= True)      # batch*beam x hidden_size
@@ -281,6 +281,7 @@ class DRL4Metro(nn.Module):
 
             #probs = F.softmax(probs + mask.log(), dim=1)      # original program
             # print(f'The mask sum is: {mask.log().sum()}')
+            # To filter out the invalid direction, we add a large positive number to the valid directions, essentially instructing the softmax to set all other directions to zero.
             probs = F.softmax(probs + mask*10000, dim=1)
             #probs: size (batch,sequence_size) 
 
