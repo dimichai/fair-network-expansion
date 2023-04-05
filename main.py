@@ -46,7 +46,8 @@ if __name__ == "__main__":
     parser.add_argument('--group_weights_files', default=None, nargs="*") # files that contain group weights of each grid square (e.g. when each square has a percentage of a certain group distribution).
     parser.add_argument('--no_log', action='store_true', default=False)
     parser.add_argument('--use_abs', action='store_true', default=False) # if true, it will use absolute values of satisfied OD as reward (default is to use percentage satsified OD) (does not work in weighted reward)
-
+    parser.add_argument('--ignore_static', action='store_true', default=False) # if true, it will not take into consideration the static part of the state.
+    
     args = parser.parse_args()
 
     environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file, group_weights_files=args.group_weights_files, ignore_existing_lines=args.ignore_existing_lines)
