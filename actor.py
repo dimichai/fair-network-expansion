@@ -308,6 +308,7 @@ class DRL4Metro(nn.Module):
             agent_current_index = ptr.data.cpu().numpy()[0] # int
 
             # Got the agent grid index sequence
+            # If we are on step 1 of the epside, set the selected cell to be the last_grid
             if count_num == 1 and specify_original_station == 0:
                 agent_grids = grid_index1
                 exist_agent_last_grid = grid_index1.view(1, 2)  # grid_x,grid_y
