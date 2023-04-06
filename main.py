@@ -2,6 +2,7 @@ import argparse
 
 from constraints import ForwardConstraints
 from environment import Environment
+from pcn_trainer import PCNTrainer
 from trainer import Trainer
 from pathlib import Path
 from mlflow import log_metric, log_param, log_artifacts
@@ -46,12 +47,20 @@ if __name__ == "__main__":
     parser.add_argument('--group_weights_files', default=None, nargs="*") # files that contain group weights of each grid square (e.g. when each square has a percentage of a certain group distribution).
     parser.add_argument('--no_log', action='store_true', default=False)
     parser.add_argument('--use_abs', action='store_true', default=False) # if true, it will use absolute values of satisfied OD as reward (default is to use percentage satsified OD) (does not work in weighted reward)
+    
+    # PCN-specific arguments
+    parser.add_argument('--pcn', action='store_true', default=False)
+    parser.add_argument('--pcn_lr', default=1e-2, type=float)
+    parser.add_argument('--nr_episodes', default=100, type=int)
 
     args = parser.parse_args()
 
     environment = Environment(Path(f"./environments/{args.environment}"), groups_file=args.groups_file, group_weights_files=args.group_weights_files, ignore_existing_lines=args.ignore_existing_lines)
     constraints = ForwardConstraints(environment.grid_x_size, environment.grid_y_size, environment.existing_lines_full, environment.grid_to_vector)
-    trainer = Trainer(environment, constraints, args)
+    if args.pcn:
+        trainer = PCNTrainer(environment, constraints, args)
+    else:
+        trainer = Trainer(environment, constraints, args)
 
     # Log parameters on mlflow
     for arg, value in vars(args).items():
