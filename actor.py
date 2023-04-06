@@ -209,7 +209,7 @@ class DRL4Metro(nn.Module):
         
 
         specify_original_station = 0
-        # For this problem, there are no dynamic elements - so dynamic tensor is zeros.
+        # This runs only if there is a specified initial starting station.
         if dynamic.sum():
             specify_original_station = 1
 
