@@ -396,6 +396,26 @@ create_all_plots(amsterdam, metrics_ams, ams_w_empty_plot,
     env_name='Amsterdam',
     group_names=('Dutch/Western', 'Non-Western'))
 
+#%% Plot reward curves
+ams_w_empty_rewards = [
+    ['Max. Effic.',     'amsterdam_20221025_18_07_17.271867', cp[0], '', 'o'],
+    ['Access. Index',   'amsterdam_20221026_16_31_11.370638', cp[1], '-', 's'],
+    ['Var.Reg',         'amsterdam_20220706_11_15_16.765435', cp[2], '+', '^'],
+    ['Rawls',           'amsterdam_20221027_09_51_21.915196', cp[3], 'o', 'v'],
+    ['GGI',             'amsterdam_20220708_11_21_23.191428', cp[4], '/', 'D'],
+]
+
+fig, ax = plt.subplots(figsize=(9, 6))
+for name, model, color, marker, line in ams_w_empty_rewards:
+    rewards = pd.read_csv(f'./result/{model}/reward_actloss_criloss.txt', header=None, sep="\t")
+    ax.plot(rewards[0], label=name, color=color)
+
+ax.set_xlabel('Training Epoch', fontsize=22)
+# ax.set_xlim(0, 5000)
+ax.set_ylabel('Reward', fontsize=22)
+ax.legend(fontsize=16, loc='lower right')
+fig.suptitle(f'Average Training Rewards', fontsize=22)
+
 
 #%% XIAN
 
