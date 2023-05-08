@@ -105,7 +105,7 @@ def plot_bar(model_names, model_labels, model_colors, model_hatches,
         xpos = xpos + width
 
     plt.xlabel('House Price Quintiles', fontsize=32)
-    plt.ylabel('% of total satisfied flows', fontsize=32)
+    plt.ylabel('% Satisfied Demand', fontsize=32)
     
     plt.title(f"Benefits Distribution among Groups - {env_name}", fontsize=32)
     plt.xticks(ind + width * 3 / 2, group_names)
@@ -171,9 +171,9 @@ def plot_scatter(x,y,ax=None, markers=None, labels=None, colors=None, env_name=N
             paths.append(path)
         sc.set_paths(paths)
 
-    ax.set_xlabel('% of total satisfied flows', fontsize=32)
-    ax.set_ylabel('Gini Index', fontsize=32)
-    fig.suptitle(f'Equity vs Efficiency - {env_name}', fontsize=32)
+    ax.set_xlabel('Efficiency (% Satisfied Demand)', fontsize=32)
+    ax.set_ylabel('Fairness (Difference Between Groups)', fontsize=32)
+    fig.suptitle(f'Efficiency versus Fairness - {env_name}', fontsize=32)
     ax.set_ylim((0,0.8))
 
 
@@ -309,23 +309,26 @@ ams_empty_ggi_2_od, ams_empty_ggi_2_gini, ams_empty_ggi_2_lq = print_stats(ams_e
 #%% Amsterdam Full environment
 
 ams_full_plot = [
-    ['Max. Effic.',   'amsterdam_20220810_09_33_35.507895', cp[0], '', 'o'],
+    ['Maximize Efficiency',   'amsterdam_20220810_09_33_35.507895', cp[0], '', 'o'],
     ['Access. Index',   'amsterdam_20220807_22_43_37.708173', cp[1], '-', 's'],
     ['Var.Reg',         'amsterdam_20220809_00_40_57.169847', cp[2], '+', '^'],
     ['Rawls',           'amsterdam_20220808_11_53_12.554688', cp[3], 'o', 'v'],
-    ['GGI',             'amsterdam_20220810_20_23_40.289417', cp[4], '/', 'D'],
+    ['Equalize Benefits',             'amsterdam_20220810_20_23_40.289417', cp[4], '/', 'D'],
 ]
 
 create_all_plots(amsterdam, metrics_ams, ams_full_plot, 
-    bar_plot_models=['Max. Effic.', 'Rawls', 'GGI'],
-    line_plot_models=['Max. Effic.', 'Access. Index', 'Rawls', 'GGI', 'Var.Reg'],
-    scatter_plot_models=['Max. Effic.', 'Access. Index', 'Var.Reg', 'Rawls', 'GGI'],
-    scatter_x=[ams_full_ses0_od, ams_full_ses1_od, ams_full_var_3_od, ams_full_rawls_od, ams_full_ggi_2_od],
-    scatter_y=[ams_full_ses0_gini, ams_full_ses1_gini, ams_full_var_3_gini, ams_full_rawls_gini, ams_full_ggi_2_gini],
+    bar_plot_models=['Maximize Efficiency', 'Rawls', 'Equalize Benefits'],
+    line_plot_models=['Maximize Efficiency', 'Rawls', 'Equalize Benefits'],
+    scatter_plot_models=['Maximize Efficiency', 'Rawls', 'Equalize Benefits'],
+    scatter_x=[ams_full_ses0_od, ams_full_rawls_od, ams_full_ggi_2_od],
+    scatter_y=[ams_full_ses0_gini, ams_full_rawls_gini, ams_full_ggi_2_gini],
+    # scatter_x=[ams_full_ses0_od, ams_full_ses1_od, ams_full_var_3_od, ams_full_rawls_od, ams_full_ggi_2_od],
+    # scatter_y=[ams_full_ses0_gini, ams_full_ses1_gini, ams_full_var_3_gini, ams_full_rawls_gini, ams_full_ggi_2_gini],
     plot_name_prefix='ams_full',
     env_name='Amsterdam')
 
 
+#%%
 ams_empty_plot = [
     ['Max. Effic.',   'amsterdam_20220705_18_17_31.196986', cp[0], '', 'o'],
     ['Access. Index',   'amsterdam_20220705_18_25_09.654804', cp[1], '-', 's'],
@@ -395,7 +398,6 @@ create_all_plots(amsterdam, metrics_ams, ams_w_empty_plot,
     plot_name_prefix='ams_w_empty',
     env_name='Amsterdam',
     group_names=('Dutch/Western', 'Non-Western'))
-
 
 #%% XIAN
 
