@@ -47,7 +47,7 @@ if __name__ == "__main__":
     patches = [ mpatches.Patch(color=colors[i], label=labels[i] ) for i in range(len(values)) ]
     plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0. )
     plt.title("Amsterdam - House price bin groups")
-    plt.savefig(env_path / 'house_price_groups.png', bbox_inches='tight')
+    plt.savefig(env_path / f'house_price_groups_{house_price_bins}.png', bbox_inches='tight')
 
 
 # %%
