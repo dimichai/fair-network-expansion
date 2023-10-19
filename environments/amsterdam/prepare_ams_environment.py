@@ -17,7 +17,7 @@ from environment import Environment
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-house_price_bins = 5
+house_price_bins = 10
 
 if __name__ == "__main__":
     # Note: Run this file
