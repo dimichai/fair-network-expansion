@@ -16,7 +16,7 @@ from environment import Environment
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-price_bins = 5
+price_bins = 10
 
 if __name__ == "__main__":
     # Note: since the xian environment is already prepared, we can just initialize it.
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     patches = [ mpatches.Patch(color=colors[i], label=labels[i] ) for i in range(len(values)) ]
     plt.legend(handles=patches, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0. )
     plt.title("Xi'an China - House price bin groups")
-    plt.savefig(env_path / 'house_price_groups.png', bbox_inches='tight')
+    plt.savefig(env_path / f'house_price_groups_{price_bins}.png', bbox_inches='tight')
 
     # Calculate aggregate origin-destination flow matrix for each grid square.
     # A measure of importance of each square.
@@ -62,8 +62,8 @@ if __name__ == "__main__":
         g = environment.vector_to_grid(torch.Tensor([i])).type(torch.int32)
         agg_od_g[g[0], g[1]] = agg_od_v[i]
     # Plot the aggregate od
-    fig, ax = plt.subplots(figsize=(5, 5))
-    ax.imshow(agg_od_g.cpu())
-    fig.suptitle(f'Xi’an, China - Aggregate OD by square')
-    fig.savefig(env_path / 'aggregate_od_by_square.png', bbox_inches='tight')
+    # fig, ax = plt.subplots(figsize=(5, 5))
+    # ax.imshow(agg_od_g.cpu())
+    # fig.suptitle(f'Xi’an, China - Aggregate OD by square')
+    # fig.savefig(env_path / 'aggregate_od_by_square.png', bbox_inches='tight')
 # %%
