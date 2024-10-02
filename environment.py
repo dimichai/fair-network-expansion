@@ -131,7 +131,7 @@ class Environment(object):
                 # Note: here we use the full line filter, because we want to leave out the connection of the intersection
                 # between the new line and existing line stations, as we assume this is already covered by the existing lines.
                 tour_mask = torch.ones(tour_idx.numel(), dtype=torch.bool)
-                tour_mask[intersection_full_line[:, 1]] = False
+                tour_mask[intersection_station_line[:, 1]] = False
                 # Note this won't work with multi-dimensional tour_idx
                 tour_connections = tour_idx[0, tour_mask]
 
@@ -182,6 +182,46 @@ class Environment(object):
             self.price_mx_norm = self.price_mx / torch.max(self.price_mx)
         except FileNotFoundError:
             print('Price matrix not available.')
+            
+        # Read existing metro lines of the environment.
+        if not ignore_existing_lines and config.has_option('config', 'existing_lines'):
+            # json is used to load lists from ConfigParser as there is no built in way to do it.
+            existing_lines = self.process_lines(json.loads(config.get('config', 'existing_lines')))
+            # Full lines contains the lines + the squares between consecutive stations e.g. if line is (0,0)-(0,2)-(2,2) then full line also includes (0,1), (1,2).
+            # These are important for when calculating connections between generated & lines and existing lines.
+            existing_lines_full = self.process_lines(json.loads(config.get('config', 'existing_lines_full')))
+
+            # Create line tensors
+            self.existing_lines = [l.view(len(l), 1) for l in existing_lines]
+            self.existing_lines_full = [l.view(len(l), 1) for l in existing_lines_full]
+            
+            # Exclude satisfied OD pairs from the existing lines.
+            exclude_line_pairs = torch.Tensor([]).long().to(device)
+            for l in existing_lines:
+                pair1 = torch.combinations(l, 2)
+                pair2 = torch.combinations(l.flip(0), 2)
+                
+                exclude_line_pairs = torch.cat((exclude_line_pairs, pair1, pair2))
+            self.od_mx[exclude_line_pairs[:, 0], exclude_line_pairs[:, 1]] = 0
+
+        else:
+            self.existing_lines = []
+            self.existing_lines_full = []
+            
+        # Apply excluded OD segments to the od_mx. E.g. segments very close to the current lines that we want to set OD to 0.
+        if config.has_option('config', 'excluded_od_segments'):
+            exclude_segments = self.process_lines(json.loads(config.get('config', 'excluded_od_segments')))
+            if len(exclude_segments) > 0:
+                exclude_pairs = torch.Tensor([]).long().to(device)
+                for s in exclude_segments:
+                    # Create two-way combinations of each segment.
+                    # e.g. segment: 1-2-3-4, pairs: 1-2, 2-1, 1-3, 3-1, 1-4, 4-1, ... etc
+                    pair1 = torch.combinations(s, 2)
+                    pair2 = torch.combinations(s.flip(0), 2)
+
+                    exclude_pairs = torch.cat((exclude_pairs, pair1, pair2))
+            
+                self.od_mx[exclude_pairs[:, 0], exclude_pairs[:, 1]] = 0
         
         if group_weights_files:
             assert not (groups_file and len(group_weights_files) > 0), 'Provide either groups_file or group_weights_files, cannot have both'
@@ -220,36 +260,6 @@ class Environment(object):
                 group_mask[:, group_squares] =  gw[gw > 0].reshape(1, -1).expand(group_mask.shape[0], -1)
                 
                 self.group_od_mx.append(group_mask * self.od_mx)
-
-        # Read existing metro lines of the environment.
-        if not ignore_existing_lines and config.has_option('config', 'existing_lines'):
-            # json is used to load lists from ConfigParser as there is no built in way to do it.
-            existing_lines = self.process_lines(json.loads(config.get('config', 'existing_lines')))
-            # Full lines contains the lines + the squares between consecutive stations e.g. if line is (0,0)-(0,2)-(2,2) then full line also includes (0,1), (1,2).
-            # These are important for when calculating connections between generated & lines and existing lines.
-            existing_lines_full = self.process_lines(json.loads(config.get('config', 'existing_lines_full')))
-
-            # Create line tensors
-            self.existing_lines = [l.view(len(l), 1) for l in existing_lines]
-            self.existing_lines_full = [l.view(len(l), 1) for l in existing_lines_full]
-        else:
-            self.existing_lines = []
-            self.existing_lines_full = []
-
-        # Apply excluded OD segments to the od_mx. E.g. segments very close to the current lines that we want to set OD to 0.
-        if config.has_option('config', 'excluded_od_segments'):
-            exclude_segments = self.process_lines(json.loads(config.get('config', 'excluded_od_segments')))
-            if len(exclude_segments) > 0:
-                exclude_pairs = torch.Tensor([]).long().to(device)
-                for s in exclude_segments:
-                    # Create two-way combinations of each segment.
-                    # e.g. segment: 1-2-3-4, pairs: 1-2, 2-1, 1-3, 3-1, 1-4, 4-1, ... etc
-                    pair1 = torch.combinations(s, 2)
-                    pair2 = torch.combinations(s.flip(0), 2)
-
-                    exclude_pairs = torch.cat((exclude_pairs, pair1, pair2))
-            
-                self.od_mx[exclude_pairs[:, 0], exclude_pairs[:, 1]] = 0
 
         # Create the static representation of the grid coordinates - to be used by the actor.
         xs, ys = [], []
