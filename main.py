@@ -5,6 +5,7 @@ from environment import Environment
 from trainer import Trainer
 from pathlib import Path
 from mlflow import log_metric, log_param, log_artifacts
+from codecarbon import EmissionsTracker
 
 # torch.manual_seed(0)
 
@@ -67,7 +68,10 @@ if __name__ == "__main__":
         log_param(arg, value)
 
     if not args.test:
+        tracker = EmissionsTracker(output_dir="carbon_logs", project_name=f"{args.environment}_{args.reward}_{args.seed}")
+        tracker.start()
         trainer.train(args)
+        tracker.stop()
     else:
         trainer.evaluate(args)
 
